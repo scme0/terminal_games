@@ -1,3 +1,4 @@
+use std::convert::Infallible;
 use crate::CellState::{Bomb, Checked, Flagged, Unchecked};
 use crate::CompleteState::{Lose, Win};
 use crate::GameState::{Complete, Playing};
@@ -5,21 +6,40 @@ use crossterm::{execute, terminal, ErrorKind, Result};
 use rand::Rng;
 use std::io;
 use log::info;
+use crate::AdjacentBombs::{Eight, Five, Four, One, Seven, Six, Three, Two, Zero};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum AdjacentBombs {
-    Zero,
-    One,
-    Two,
-    Three,
-    Four,
-    Five,
-    Six,
-    Seven,
-    Eight,
+    Zero = 0,
+    One = 1,
+    Two = 2,
+    Three = 3,
+    Four = 4,
+    Five = 5,
+    Six = 6,
+    Seven = 7,
+    Eight = 8,
 }
 
-#[derive(Debug, Copy, Clone)]
+impl AdjacentBombs {
+    pub fn from_u8(number: u8) -> Result<AdjacentBombs> {
+        let bombs = match number {
+            0 => Zero,
+            1 => One,
+            2 => Two,
+            3 => Three,
+            4 => Four,
+            5 => Five,
+            6 => Six,
+            7 => Seven,
+            8 => Eight,
+            _ => Err(ErrorKind::new(io::ErrorKind::Other, "This number cannot be an adjacent number of bombs!"))?
+        };
+        Ok(bombs)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum CellState {
     Unchecked,
     Checked(AdjacentBombs),
@@ -44,7 +64,8 @@ pub enum GameState {
 pub struct Engine {
     game_state: GameState,
     board_play_state: Vec<Vec<CellState>>,
-    board_bombs: Vec<Vec<bool>>,
+    board_state: Vec<Vec<CellState>>,
+    board_initialised: bool,
     width: usize,
     height: usize,
     bomb_count: usize,
@@ -62,37 +83,10 @@ pub enum MoveType {
 impl Engine {
     pub fn new(width: usize, height: usize, bomb_count: usize) -> Self {
         let total_cells = width * height;
-        let mut local_bomb_count = bomb_count;
-        let mut rng = rand::thread_rng();
-        let bomb_probability = bomb_count as f64 / total_cells as f64;
-
-        let mut get_bomb_or_not = || rng.gen_range(0.0..1.0) <= bomb_probability;
-
         let mut board_play_state = vec![vec![Unchecked; width]; height];
-        let mut board_bombs = vec![vec![false; width]; height];
-        while local_bomb_count > 0 {
-            for x in 0..height {
-                for y in 0..width {
-                    if board_bombs[x][y] {
-                        continue;
-                    }
-                    board_bombs[x][y] = get_bomb_or_not();
-                    if board_bombs[x][y] {
-                        local_bomb_count -= 1;
-                    }
-                    if local_bomb_count == 0 {
-                        break;
-                    }
-                }
-                if local_bomb_count == 0 {
-                    break;
-                }
-            }
-        }
-        info!("Bombs: {:?}", board_bombs);
-        info!("Engine: w: {}, h: {}, b: {}, t: {}, lb: {}", width, height, bomb_count, total_cells, local_bomb_count);
+        let mut board_state = vec![vec![Checked(Zero); width]; height];
         Engine {
-            board_bombs,
+            board_state,
             board_play_state,
             game_state: GameState::Initialised,
             width,
@@ -101,6 +95,7 @@ impl Engine {
             checked_cells: 0,
             flagged_cells: 0,
             total_cells,
+            board_initialised: false
         }
     }
 
@@ -121,45 +116,32 @@ impl Engine {
             ))?
         }
 
+        if self.bomb_count >= self.total_cells {
+            Err(ErrorKind::new(io::ErrorKind::Other, "Too many bombs! You can have a maximum of 1 bomb less than total cells"))?;
+        }
+
+        if !self.board_initialised {
+            self.initialise_board((x,y))?;
+        }
+
         match move_type {
             MoveType::Dig => match self.board_play_state[x][y] {
                 Unchecked => {
-                    if self.board_bombs[x][y] {
-                        self.board_play_state[x][y] = Bomb;
-                        self.game_state = Complete(Lose);
-                    } else {
-                        info!("clicked on: x: {}, y: {}", x ,y);
-                        let clear_cells = self.get_coords_of_surrounding_clear_cells(x,y);
-                        let bomb_count = 8 - clear_cells.len();
-                        //let mut bomb_counts = vec![(bomb_count, x, y)];
-                        // if bomb_count == 0 {
-                        //     for (x_s, y_s) in clear_cells {
-                        //         let clear_cells_for_surr = self.get_coords_of_surrounding_clear_cells(x_s,y_s);
-                        //         if clear_cells_for_surr.len() == 8
-                        //     }
-                        // }
-                        let adjacent_bombs = match bomb_count {
-                            0 => AdjacentBombs::Zero,
-                            1 => AdjacentBombs::One,
-                            2 => AdjacentBombs::Two,
-                            3 => AdjacentBombs::Three,
-                            4 => AdjacentBombs::Four,
-                            5 => AdjacentBombs::Five,
-                            6 => AdjacentBombs::Six,
-                            7 => AdjacentBombs::Seven,
-                            8 => AdjacentBombs::Eight,
-                            _ => Err(ErrorKind::new(
-                                io::ErrorKind::Other,
-                                "Invalid number of adjacent bombs!",
-                            ))?,
-                        };
-                        self.board_play_state[x][y] = Checked(adjacent_bombs);
-                        self.checked_cells += 1;
-                        if self.checked_cells + self.flagged_cells == self.total_cells {
-                            self.game_state = Complete(Win);
-                        } else {
-                            self.game_state = Playing;
+                    self.board_play_state[x][y] = self.board_state[x][y];
+                    match self.board_play_state[x][y] {
+                        Bomb => self.game_state = Complete(Lose),
+                        Checked(bombs) => {
+                            // if bombs == Zero {
+                            //     TODO: Reveal all Zeros and adjacent non-zeros on board
+                            // }
+                            self.checked_cells += 1;
+                            if self.checked_cells + self.flagged_cells == self.total_cells {
+                                self.game_state = Complete(Win);
+                            } else {
+                                self.game_state = Playing;
+                            }
                         }
+                        _ => {}
                     }
                 }
                 Flagged => {
@@ -183,9 +165,7 @@ impl Engine {
         Ok(())
     }
 
-    fn get_coords_of_surrounding_clear_cells(&self, x: usize, y: usize) -> Vec<(usize, usize)> {
-        let mut clear_cells = vec![];
-        // let mut bomb_count = 0;
+    fn increment_bomb_count_of_surrounding_cells(&mut self, x: usize, y: usize) -> Result<()> {
         for x_s in (x as i32 - 1)..(x as i32 + 2) {
             if x_s < 0 || x_s >= self.height as i32 {
                 info!("out of range x, skipping: {}",x_s);
@@ -202,19 +182,55 @@ impl Engine {
                     continue;
                 }
 
-                if self.board_bombs[x_s as usize][y_s as usize] {
-                    info!("bomb found at: x: {}, y: {}", x_s, y_s);
-                    clear_cells.push((x_s as usize, y_s as usize));
-                    // bomb_count += 1;
-                } else {
-                    info!("no bomb found at: x: {}, y: {}", x_s, y_s);
+                if let Checked(bombs) = self.board_state[x_s as usize][y_s as usize] {
+                    let mut bombs_as_byte = bombs as u8;
+                    bombs_as_byte += 1;
+                    let mut new_bombs = AdjacentBombs::from_u8(bombs_as_byte)?;
+                    self.board_state[x_s as usize][y_s as usize] = Checked(new_bombs);
                 }
             }
         }
-        // if bomb_count > 8 {
-        //     bomb_count = 8;
-        // }
-        return clear_cells;
+        Ok(())
+    }
+
+    fn initialise_board(&mut self, clicked_cell: (usize, usize)) -> Result<()> {
+        if self.board_initialised {
+            return Ok(());
+        }
+
+        let mut rng = rand::thread_rng();
+        let bomb_probability = self.bomb_count as f64 / self.total_cells as f64;
+        let mut get_bomb_or_not = || rng.gen_range(0.0..1.0) <= bomb_probability;
+        let mut local_bomb_count = self.bomb_count;
+        while local_bomb_count > 0 {
+            for x in 0..self.height {
+                for y in 0..self.width {
+                    // Ensure no bomb is placed on the clicked cell!
+                    if  clicked_cell == (x, y) {
+                        continue;
+                    }
+
+                    if self.board_state[x][y] == Bomb {
+                        continue;
+                    }
+                    if get_bomb_or_not() {
+                        self.board_state[x][y] = Bomb;
+                        local_bomb_count -= 1;
+                        self.increment_bomb_count_of_surrounding_cells(x, y)?;
+                    }
+                    if local_bomb_count == 0 {
+                        break;
+                    }
+                }
+                if local_bomb_count == 0 {
+                    break;
+                }
+            }
+        }
+        self.board_initialised = true;
+        info!("Bombs: {:?}", self.board_state);
+        info!("Engine: w: {}, h: {}, b: {}, t: {}, lb: {}", self.width, self.height, self.bomb_count, self.total_cells, local_bomb_count);
+        Ok(())
     }
 }
 
