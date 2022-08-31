@@ -11,7 +11,6 @@ pub struct UpdateElement {
     pub x: usize,
     pub y: usize,
     pub value: char,
-    pub bg: Color,
     pub fg: Color,
 }
 

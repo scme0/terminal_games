@@ -30,7 +30,7 @@ pub fn draw(windows: Vec<Window>) -> Result<()> {
                 .value
                 .to_string()
                 .with(updateElement.fg)
-                .on(updateElement.bg);
+                .on(Color::Rgb {r:0, g:0, b:0});
             if updateElement.y > window.width || updateElement.x > window.height {
                 continue;
             }
@@ -41,7 +41,8 @@ pub fn draw(windows: Vec<Window>) -> Result<()> {
             queue!(
                     stdout,
                     cursor::MoveTo(absolute_y, absolute_x),
-                    style::Print(value)
+                    style::Print(value),
+                    cursor::Hide
                 )?;
         }
     }

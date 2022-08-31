@@ -65,7 +65,6 @@ impl Component for ButtonComponent {
                     x,
                     y: y + i,
                     value: c,
-                    bg: Color::Black,
                     fg: Color::White,
                 })
             }
