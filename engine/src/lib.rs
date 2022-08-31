@@ -1,3 +1,4 @@
+use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
 use crate::CellState::{Bomb, Checked, Flagged, Unchecked};
 use crate::CompleteState::{Lose, Win};
@@ -6,7 +7,27 @@ use crossterm::{execute, terminal, ErrorKind, Result};
 use rand::Rng;
 use std::io;
 use log::info;
+use queues::{IsQueue, Queue, queue};
 use crate::AdjacentBombs::{Eight, Five, Four, One, Seven, Six, Three, Two, Zero};
+
+pub trait CanBeEngine {
+    fn get_size(&self) -> (usize, usize);
+    fn get_board_state(&self) -> (GameState, HashMap<Cell,CellState>);
+    fn play_move(&mut self, move_type: MoveType, cell: Cell) -> Result<()>;
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Cell {
+    pub x: usize,
+    pub y: usize
+}
+
+impl From<Cell> for (usize, usize) {
+    fn from(c: Cell) -> (usize, usize) {
+        let Cell {x, y} = c;
+        return (x, y);
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum AdjacentBombs {
@@ -63,8 +84,8 @@ pub enum GameState {
 #[derive(Debug, Clone)]
 pub struct Engine {
     game_state: GameState,
-    board_play_state: Vec<Vec<CellState>>,
-    board_state: Vec<Vec<CellState>>,
+    board_play_state: HashMap<Cell,CellState>,
+    board_state: HashMap<Cell,CellState>,
     board_initialised: bool,
     width: usize,
     height: usize,
@@ -83,8 +104,14 @@ pub enum MoveType {
 impl Engine {
     pub fn new(width: usize, height: usize, bomb_count: usize) -> Self {
         let total_cells = width * height;
-        let mut board_play_state = vec![vec![Unchecked; width]; height];
-        let mut board_state = vec![vec![Checked(Zero); width]; height];
+        let mut board_play_state = HashMap::new();
+        let mut board_state = HashMap::new();
+        for x in 0..height {
+            for y in 0..width {
+                board_play_state.insert(Cell{x,y}, Unchecked);
+                board_state.insert(Cell{x,y}, Checked(Zero));
+            }
+        }
         Engine {
             board_state,
             board_play_state,
@@ -99,101 +126,19 @@ impl Engine {
         }
     }
 
-    pub fn get_size(&self) -> (usize, usize) {
-        (self.height, self.width)
-    }
-
-    pub fn get_board_state(&self) -> (GameState, Vec<Vec<CellState>>) {
-        // info!("boardState: {:?}", self.board_play_state.clone());
-        (self.game_state, self.board_play_state.clone())
-    }
-
-    pub fn play_move(&mut self, move_type: MoveType, x: usize, y: usize) -> Result<()> {
-        if x > self.height || y > self.width {
-            Err(ErrorKind::new(
-                io::ErrorKind::Other,
-                "Move location is out of range",
-            ))?
-        }
-
-        if self.bomb_count >= self.total_cells {
-            Err(ErrorKind::new(io::ErrorKind::Other, "Too many bombs! You can have a maximum of 1 bomb less than total cells"))?;
-        }
-
-        if !self.board_initialised {
-            self.initialise_board((x,y))?;
-        }
-
-        match move_type {
-            MoveType::Dig => match self.board_play_state[x][y] {
-                Unchecked => {
-                    self.board_play_state[x][y] = self.board_state[x][y];
-                    match self.board_play_state[x][y] {
-                        Bomb => self.game_state = Complete(Lose),
-                        Checked(bombs) => {
-                            // if bombs == Zero {
-                            //     TODO: Reveal all Zeros and adjacent non-zeros on board
-                            // }
-                            self.checked_cells += 1;
-                            if self.checked_cells + self.flagged_cells == self.total_cells {
-                                self.game_state = Complete(Win);
-                            } else {
-                                self.game_state = Playing;
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                Flagged => {
-                    self.board_play_state[x][y] = Unchecked;
-                    self.flagged_cells -= 1;
-                }
-                _ => {}
-            },
-            MoveType::Flag => match self.board_play_state[x][y] {
-                Unchecked => {
-                    self.board_play_state[x][y] = Flagged;
-                    self.flagged_cells += 1;
-                }
-                Flagged => {
-                    self.board_play_state[x][y] = Unchecked;
-                    self.flagged_cells -= 1;
-                }
-                _ => {}
-            },
-        }
+    fn increment_bomb_count_of_surrounding_cells(&mut self, cell: Cell) -> Result<()> {
+        self.get_surrounding_cells(cell, Some(|s, c| {
+            if let Checked(bombs) = s.board_state[&c] {
+                let mut bombs_as_byte = bombs as u8;
+                bombs_as_byte += 1;
+                let mut new_bombs = AdjacentBombs::from_u8(bombs_as_byte).expect("");
+                s.board_state.insert(c, Checked(new_bombs));
+            }
+        }));
         Ok(())
     }
 
-    fn increment_bomb_count_of_surrounding_cells(&mut self, x: usize, y: usize) -> Result<()> {
-        for x_s in (x as i32 - 1)..(x as i32 + 2) {
-            if x_s < 0 || x_s >= self.height as i32 {
-                info!("out of range x, skipping: {}",x_s);
-                continue;
-            }
-            for y_s in (y as i32 - 1)..(y as i32 + 2) {
-                if y_s < 0 || y_s >= self.width as i32 {
-                    info!("out of range y, skipping: {}",y_s);
-                    continue;
-                }
-
-                if y_s == y as i32 && x_s == x as i32 {
-                    info!("don't check clicked spot :)");
-                    continue;
-                }
-
-                if let Checked(bombs) = self.board_state[x_s as usize][y_s as usize] {
-                    let mut bombs_as_byte = bombs as u8;
-                    bombs_as_byte += 1;
-                    let mut new_bombs = AdjacentBombs::from_u8(bombs_as_byte)?;
-                    self.board_state[x_s as usize][y_s as usize] = Checked(new_bombs);
-                }
-            }
-        }
-        Ok(())
-    }
-
-    fn initialise_board(&mut self, clicked_cell: (usize, usize)) -> Result<()> {
+    fn initialise_board(&mut self, clicked_cell: Cell) -> Result<()> {
         if self.board_initialised {
             return Ok(());
         }
@@ -205,18 +150,20 @@ impl Engine {
         while local_bomb_count > 0 {
             for x in 0..self.height {
                 for y in 0..self.width {
+                    let cell = Cell {x, y};
                     // Ensure no bomb is placed on the clicked cell!
-                    if  clicked_cell == (x, y) {
+                    if  clicked_cell == cell {
                         continue;
                     }
 
-                    if self.board_state[x][y] == Bomb {
+                    if self.board_state[&cell] == Bomb {
                         continue;
                     }
+
                     if get_bomb_or_not() {
-                        self.board_state[x][y] = Bomb;
+                        self.board_state.insert(cell, Bomb);
                         local_bomb_count -= 1;
-                        self.increment_bomb_count_of_surrounding_cells(x, y)?;
+                        self.increment_bomb_count_of_surrounding_cells(cell)?;
                     }
                     if local_bomb_count == 0 {
                         break;
@@ -228,8 +175,119 @@ impl Engine {
             }
         }
         self.board_initialised = true;
-        info!("Bombs: {:?}", self.board_state);
-        info!("Engine: w: {}, h: {}, b: {}, t: {}, lb: {}", self.width, self.height, self.bomb_count, self.total_cells, local_bomb_count);
+        Ok(())
+    }
+
+    fn reveal_safe_patch(&mut self, starting_cell: Cell) -> Result<()> {
+        let mut visited_cells = HashSet::new();
+        let mut cell_queue = queue![starting_cell];
+        while let Ok(cell) = cell_queue.remove() {
+            if visited_cells.contains(&cell) {
+                continue;
+            }
+            visited_cells.insert(cell);
+            if let Checked(bombs) = self.board_state[&cell] {
+                if bombs == Zero {
+                    for surrounding_cell in self.get_surrounding_cells(cell, None) {
+                        cell_queue.add(surrounding_cell).expect("");
+                    }
+                }
+                self.board_play_state.insert(cell, self.board_state[&cell]);
+            }
+        }
+        Ok(())
+    }
+
+    fn get_surrounding_cells(&mut self, cell: Cell, func: Option<fn (engine: &mut Engine,cell: Cell)>) -> Vec<Cell> {
+        let (x, y) = cell.into();
+        let mut cells = vec![];
+        for x_s in (x as i32 - 1)..(x as i32 + 2) {
+            if x_s < 0 || x_s >= self.height as i32 {
+                continue;
+            }
+            for y_s in (y as i32 - 1)..(y as i32 + 2) {
+                if y_s < 0 || y_s >= self.width as i32 {
+                    continue;
+                }
+                if y_s == y as i32 && x_s == x as i32 {
+                    continue;
+                }
+
+                let cell = Cell {x: x_s as usize, y: y_s as usize};
+                if let Some(f) = func {
+                    f(self, cell);
+                }
+
+                cells.push(cell);
+            }
+        }
+        return cells;
+    }
+}
+
+impl CanBeEngine for Engine {
+    fn get_size(&self) -> (usize, usize) {
+        (self.height, self.width)
+    }
+
+    fn get_board_state(&self) -> (GameState, HashMap<Cell,CellState>) {
+        (self.game_state, self.board_play_state.clone())
+    }
+
+    fn play_move(&mut self, move_type: MoveType, cell: Cell) -> Result<()> {
+        if cell.x > self.height || cell.y > self.width {
+            Err(ErrorKind::new(
+                io::ErrorKind::Other,
+                "Move location is out of range",
+            ))?
+        }
+
+        if self.bomb_count >= self.total_cells {
+            Err(ErrorKind::new(io::ErrorKind::Other, "Too many bombs! You can have a maximum of 1 bomb less than total cells"))?;
+        }
+
+        if !self.board_initialised {
+            self.initialise_board(cell)?;
+        }
+
+        match move_type {
+            MoveType::Dig => match self.board_play_state[&cell] {
+                Unchecked => {
+                    self.board_play_state.insert(cell,self.board_state[&cell]);
+                    match self.board_play_state[&cell] {
+                        Bomb => self.game_state = Complete(Lose),
+                        Checked(bombs) => {
+                            if bombs == Zero {
+                                self.reveal_safe_patch(cell).expect("");
+                            }
+                            self.checked_cells += 1;
+                            if self.checked_cells + self.flagged_cells == self.total_cells {
+                                self.game_state = Complete(Win);
+                            } else {
+                                self.game_state = Playing;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                Flagged => {
+                    self.board_play_state.insert(cell, Unchecked);
+                    self.flagged_cells -= 1;
+                }
+                _ => {}
+            },
+            MoveType::Flag => match self.board_play_state[&cell] {
+                Unchecked => {
+                    self.board_play_state.insert(cell,Flagged);
+                    self.flagged_cells += 1;
+                }
+                Flagged => {
+                    self.board_play_state.insert(cell,Unchecked);
+                    self.flagged_cells -= 1;
+                }
+                _ => {}
+            },
+        }
         Ok(())
     }
 }

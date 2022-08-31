@@ -9,3 +9,4 @@ edition = "2021"
 rand = "0.8.5"
 crossterm = { version = "0.25" }
 log = "0.4.17"
+queues = "1.0.2"
