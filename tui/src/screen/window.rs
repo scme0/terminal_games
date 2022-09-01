@@ -48,6 +48,12 @@ pub enum ComponentWrapper {
 }
 
 impl Component for ComponentWrapper {
+    fn id(&self) -> Uuid {
+        match self {
+            ComponentWrapper::Button(c) => c.id(),
+            ComponentWrapper::GameScreen(c) => c.id()
+        }
+    }
     fn size(&self) -> (usize, usize) {
         match self {
             ComponentWrapper::Button(c) => c.size(),
@@ -60,11 +66,19 @@ impl Component for ComponentWrapper {
             ComponentWrapper::GameScreen(c) => c.update(),
         }
     }
+    fn component_type(&self) -> ComponentType {
+        match self {
+            ComponentWrapper::Button(c) => c.component_type(),
+            ComponentWrapper::GameScreen(c) => c.component_type()
+        }
+    }
 }
 
 pub trait Component {
+    fn id(&self) -> Uuid;
     fn size(&self) -> (usize, usize);
     fn update(&self) -> Vec<UpdateElement>;
+    fn component_type(&self) -> ComponentType;
 }
 
 #[derive(Debug, Clone)]
@@ -75,7 +89,6 @@ pub struct Window {
     pub y: usize,
     pub width: usize,
     pub height: usize,
-    pub updates: Vec<UpdateElement>,
     pub show_border: bool,
     pub border_title: Box<str>,
     pub component_type: ComponentType,
@@ -86,14 +99,13 @@ impl Window {
         x: usize,
         y: usize,
         z: i32,
-        width: usize,
-        height: usize,
-        updates: Vec<UpdateElement>,
-        component_type: ComponentType,
+        component: Box<dyn Component>,
         show_border: bool,
         border_title: Box<str>,
     ) -> Self {
-        let id = Uuid::new_v4();
+        let id = component.id();
+        let (height, width) = component.size();
+        let component_type = component.component_type();
         return Window {
             id,
             x,
@@ -101,7 +113,6 @@ impl Window {
             z,
             width,
             height,
-            updates,
             show_border,
             border_title,
             component_type,

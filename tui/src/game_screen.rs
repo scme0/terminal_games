@@ -5,18 +5,55 @@ use crossterm::{style::Color, Result};
 use log::info;
 use minesweeper_engine::{AdjacentBombs, CanBeEngine, Cell, CellState, Engine, GameState, MoveType};
 use std::f32::consts::E;
+use uuid::Uuid;
 use minesweeper_engine::AdjacentBombs::{Eight, Five, Four, One, Seven, Six, Three, Two, Zero};
 use minesweeper_engine::CellState::{Bomb, Checked, Flagged, Unchecked};
+use crate::screen::window::ComponentType;
 
 const VISUAL_TEST: bool = false;
 
+struct ClonedEngine {
+    size: (usize, usize)
+}
+
+impl ClonedEngine {
+    fn new(engine: &Box<dyn CanBeEngine>) -> Self {
+        ClonedEngine { size: engine.get_size() }
+    }
+}
+
+impl CanBeEngine for ClonedEngine {
+    fn get_size(&self) -> (usize, usize) {
+        self.size
+    }
+
+    fn get_board_state(&self) -> (GameState, HashMap<Cell, CellState>) {
+        (GameState::Playing, HashMap::new())
+    }
+
+    fn play_move(&mut self, _: MoveType, _: Cell) -> Result<()> {
+        Ok(())
+    }
+}
+
 pub struct GameComponent {
+    id: Uuid,
     engine: Option<Box<dyn CanBeEngine>>,
+}
+
+impl Clone for GameComponent {
+    fn clone(&self) -> Self {
+        let engine : Option<Box<dyn CanBeEngine>> = match &self.engine {
+            None => None,
+            Some(e) => Some(Box::from(ClonedEngine::new(e)))
+        };
+        GameComponent {id: self.id, engine }
+    }
 }
 
 impl GameComponent {
     pub fn new() -> GameComponent {
-        GameComponent { engine: None }
+        GameComponent { engine: None, id: Uuid::new_v4() }
     }
 
     pub fn start(&mut self, game_type: GameType) {
@@ -50,6 +87,10 @@ impl GameComponent {
 }
 
 impl Component for GameComponent {
+    fn id(&self) -> Uuid {
+        self.id
+    }
+
     fn size(&self) -> (usize, usize) {
         let size = match &self.engine {
             None => (0, 0),
@@ -81,13 +122,17 @@ impl Component for GameComponent {
 
                 updates.push(UpdateElement {
                     x: cell.x,
-                    y: cell.y*2,
+                    y: cell.y * 2,
                     value,
                     fg,
                 });
             }
         }
         return updates;
+    }
+
+    fn component_type(&self) -> ComponentType {
+        ComponentType::GameScreen
     }
 }
 

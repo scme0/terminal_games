@@ -1,6 +1,8 @@
 use crate::{ClickType, Component, UpdateElement};
 use crossterm::style::Color;
 use std::fmt::{Display, Formatter};
+use uuid::Uuid;
+use crate::screen::window::ComponentType;
 
 #[derive(Debug, Copy, Clone)]
 pub enum ButtonType {
@@ -18,7 +20,9 @@ impl Display for ButtonType {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ButtonComponent {
+    id: Uuid,
     label: Box<str>,
     width: usize,
     height: usize,
@@ -29,6 +33,7 @@ pub struct ButtonComponent {
 impl ButtonComponent {
     pub fn new(label: Box<str>, width: usize, height: usize, button_type: ButtonType) -> Self {
         return ButtonComponent {
+            id: Uuid::new_v4(),
             label,
             width,
             height,
@@ -39,8 +44,12 @@ impl ButtonComponent {
 }
 
 impl Component for ButtonComponent {
+    fn id(&self) -> Uuid {
+        self.id
+    }
+
     fn size(&self) -> (usize, usize) {
-        return (self.width, self.height);
+        return (self.height, self.width);
     }
 
     fn update(&self) -> Vec<UpdateElement> {
@@ -70,5 +79,9 @@ impl Component for ButtonComponent {
             }
         }
         return updates;
+    }
+
+    fn component_type(&self) -> ComponentType {
+        ComponentType::Button(self.button_type)
     }
 }
