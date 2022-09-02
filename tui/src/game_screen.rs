@@ -86,6 +86,13 @@ impl Component for GameComponent {
                     value,
                     fg,
                 });
+
+                updates.push(UpdateElement {
+                    x: cell.x,
+                    y: cell.y * 2 + 1,
+                    value: char::default(),
+                    fg: Color::White,
+                });
             }
         }
         return updates;

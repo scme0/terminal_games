@@ -7,7 +7,7 @@ use crossterm::{
     ErrorKind, Result,
 };
 use log::info;
-use std::collections::{HashMap};
+use std::collections::{HashMap, HashSet};
 use std::io;
 use std::io::{stdout, Write};
 use uuid::Uuid;
@@ -73,6 +73,7 @@ impl Screen {
 
     // Draw specific updates for a window. If the update is behind another window, it will only be buffered.
     pub fn draw(&mut self) -> Result<()> {
+        let mut point_map = HashSet::new();
         // ensure that windows below other windows do not draw over the top.
         // also draw border and title if set.
         let mut stdout = stdout();
@@ -90,26 +91,34 @@ impl Screen {
             };
 
             for update_element in window.get_updates().iter(){
+                if update_element.y > window.width || update_element.x > window.height {
+                    continue;
+                }
                 let value = update_element
                     .value
                     .to_string()
                     .with(update_element.fg)
                     .on(Color::Rgb { r: 0, g: 0, b: 0 });
-                if update_element.y > window.width || update_element.x > window.height {
-                    continue;
-                }
-                let absolute_x = (window.x + update_element.x) as u16;
-                let absolute_y = (window.y + update_element.y) as u16;
                 buffer.insert((update_element.x, update_element.y), value.clone());
-                // info!("Placing value: {}, {}, {}", updateElement.value, absolute_x, absolute_y);
-                queue!(
-                stdout,
-                cursor::MoveTo(absolute_y, absolute_x),
-                style::Print(value),
-                cursor::Hide
-                )?;
+
+                let absolute_x = window.x + update_element.x;
+                let absolute_y = window.y + update_element.y;
+                let key = (absolute_x, absolute_y);
+                if !point_map.contains(&key) {
+                    point_map.insert(key);
+                    // info!("Placing value: {}, {}, {}", updateElement.value, absolute_x, absolute_y);
+                    queue!(
+                        stdout,
+                        cursor::MoveTo(absolute_y as u16, absolute_x as u16),
+                        style::Print(value))?;
+                }
+            }
+
+            for (key, _) in buffer {
+                point_map.insert(*key);
             }
         }
+        queue!(stdout,cursor::Hide)?;
         stdout.flush()?;
         Ok(())
     }
