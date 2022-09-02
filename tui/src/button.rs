@@ -1,24 +1,8 @@
-use crate::{ClickType, Component, UpdateElement};
+use crate::{Click, Component, UpdateElement};
 use crossterm::style::Color;
-use std::fmt::{Display, Formatter};
+use crossterm::Result;
 use uuid::Uuid;
-use crate::screen::window::ComponentType;
-
-#[derive(Debug, Copy, Clone)]
-pub enum ButtonType {
-    Easy,
-    Medium,
-    Hard,
-    Retry,
-    Home,
-    Quit,
-}
-
-impl Display for ButtonType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
+use crate::screen::ClickAction;
 
 #[derive(Debug, Clone)]
 pub struct ButtonComponent {
@@ -27,32 +11,32 @@ pub struct ButtonComponent {
     width: usize,
     height: usize,
     changed: bool,
-    pub button_type: ButtonType,
+    pub click_action: ClickAction,
 }
 
 impl ButtonComponent {
-    pub fn new(label: Box<str>, width: usize, height: usize, button_type: ButtonType) -> Self {
+    pub fn new(label: Box<str>, width: usize, height: usize, click_action: ClickAction) -> Self {
         return ButtonComponent {
             id: Uuid::new_v4(),
             label,
             width,
             height,
             changed: true,
-            button_type,
+            click_action,
         };
     }
 }
 
 impl Component for ButtonComponent {
-    fn id(&self) -> Uuid {
+    fn get_id(&self) -> Uuid {
         self.id
     }
 
-    fn size(&self) -> (usize, usize) {
+    fn get_size(&self) -> (usize, usize) {
         return (self.height, self.width);
     }
 
-    fn update(&self) -> Vec<UpdateElement> {
+    fn get_updates(&self) -> Vec<UpdateElement> {
         let mut updates = vec![];
         if self.changed {
             let mut x = 0;
@@ -81,7 +65,10 @@ impl Component for ButtonComponent {
         return updates;
     }
 
-    fn component_type(&self) -> ComponentType {
-        ComponentType::Button(self.button_type)
+    fn handle_click(&mut self, click: Click) -> Result<ClickAction> {
+        Ok(match click {
+            Click::Left(_) => self.click_action,
+            _ => ClickAction::None
+        })
     }
 }

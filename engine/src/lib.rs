@@ -1,12 +1,10 @@
 use std::collections::{HashMap, HashSet};
-use std::convert::Infallible;
 use crate::CellState::{Bomb, Checked, Flagged, Unchecked};
 use crate::CompleteState::{Lose, Win};
 use crate::GameState::{Complete, Playing};
-use crossterm::{execute, terminal, ErrorKind, Result};
+use crossterm::{ErrorKind, Result};
 use rand::Rng;
 use std::io;
-use log::info;
 use queues::{IsQueue, Queue, queue};
 use crate::AdjacentBombs::{Eight, Five, Four, One, Seven, Six, Three, Two, Zero};
 
@@ -14,6 +12,7 @@ pub trait CanBeEngine {
     fn get_size(&self) -> (usize, usize);
     fn get_board_state(&self) -> (GameState, HashMap<Cell,CellState>);
     fn play_move(&mut self, move_type: MoveType, cell: Cell) -> Result<()>;
+    fn make_clone(&self) -> Box<dyn CanBeEngine>;
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -131,7 +130,7 @@ impl Engine {
             if let Checked(bombs) = s.board_state[&c] {
                 let mut bombs_as_byte = bombs as u8;
                 bombs_as_byte += 1;
-                let mut new_bombs = AdjacentBombs::from_u8(bombs_as_byte).expect("");
+                let new_bombs = AdjacentBombs::from_u8(bombs_as_byte).expect("");
                 s.board_state.insert(c, Checked(new_bombs));
             }
         }));
@@ -289,6 +288,10 @@ impl CanBeEngine for Engine {
             },
         }
         Ok(())
+    }
+
+    fn make_clone(&self) -> Box<dyn CanBeEngine> {
+        Box::from(Engine::new(self.width, self.height, self.bomb_count))
     }
 }
 

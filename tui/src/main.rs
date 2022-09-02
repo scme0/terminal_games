@@ -5,22 +5,10 @@ mod screen;
 
 use crate::button::ButtonComponent;
 use crate::game_screen::GameComponent;
-use crate::screen::window::{ClickType, Component, UpdateElement, Window};
-use crossterm::event::{
-    read, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers, MouseButton,
-    MouseEvent, MouseEventKind,
-};
-use crossterm::style::Color;
-use crossterm::{
-    cursor, execute, queue,
-    style::{self, Stylize},
-    terminal, Result,
-};
+use crate::screen::window::{Click, Component, UpdateElement, Window};
+use crossterm::Result;
 use flexi_logger::{FileSpec, Logger};
-use log::{info, warn};
-use std::borrow::BorrowMut;
-use std::io::{stdin, stdout, Read, Stdout, Write};
-// use crate::game::Game;
+use log::{info};
 
 fn main() -> Result<()> {
     // TODO: Figure out what "expect" is and what it does.
