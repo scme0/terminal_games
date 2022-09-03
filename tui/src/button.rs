@@ -36,31 +36,31 @@ impl Component for ButtonComponent {
     }
 
     fn get_size(&self) -> (usize, usize) {
-        return (self.height, self.width);
+        return (self.width, self.height);
     }
 
     fn get_updates(&self) -> Vec<UpdateElement> {
         let mut updates = vec![];
         if self.changed {
-            let mut x = 0;
-            if x > 1 {
-                x = x / 2;
-            }
             let mut y = 0;
+            if y > 1 {
+                y = y / 2;
+            }
+            let mut x = 0;
             let label_len = self.label.len();
             if self.width > label_len {
-                y = self.width / 2 - label_len / 2;
+                x = self.width / 2 - label_len / 2;
             }
             let i = 0;
             for c in self.label.chars() {
                 updates.push(UpdateElement {
-                    x,
-                    y: y + i,
+                    y,
+                    x: x + i,
                     value: c,
                     fg: Color::White,
                 });
-                y += 1;
-                if y >= self.width {
+                x += 1;
+                if x >= self.width {
                     break;
                 }
             }

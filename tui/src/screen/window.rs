@@ -35,7 +35,7 @@ impl Display for Click {
         match self {
             Click::Middle(point) => write!(f, "Middle with x: {} y: {}", point.x, point.y)?,
             Click::Left(point) => write!(f, "Left with x: {} y: {}", point.x, point.y)?,
-            _ => {}
+            Click::Right(point) => write!(f, "Right with x: {} y: {}", point.x, point.y)?,
         }
         Ok(())
     }
@@ -77,7 +77,7 @@ impl Window {
         border_title: Box<str>,
     ) -> Self {
         let id = component.get_id();
-        let (height, width) = component.get_size();
+        let (width, height) = component.get_size();
         return Window {
             id,
             x,

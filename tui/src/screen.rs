@@ -62,8 +62,8 @@ impl Screen {
         let (x,y) = click.to_point().into();
         for window in self.windows.iter_mut() {
             info!("looking for window click hit: {}", window.id);
-            if x >= window.x && x < window.x + window.height &&
-                y >= window.y && y < window.y + window.width {
+            if x >= window.x && x < window.x + window.width &&
+                y >= window.y && y < window.y + window.height {
                 info!("got hit: {}", window.id);
                 return window.handle_click(click);
             }
@@ -75,10 +75,6 @@ impl Screen {
     pub fn refresh(&mut self) -> Result<()> {
         let mut point_map = HashSet::new();
         let mut stdout = stdout();
-        queue!(stdout, terminal::Clear(terminal::ClearType::Purge))?;
-        queue!(stdout, terminal::Clear(terminal::ClearType::FromCursorDown))?;
-        queue!(stdout, terminal::Clear(terminal::ClearType::FromCursorUp))?;
-        queue!(stdout, terminal::Clear(terminal::ClearType::CurrentLine))?;
         queue!(stdout, terminal::Clear(terminal::ClearType::All))?;
         for window in self.windows.iter() {
             if window.show_border{
@@ -112,7 +108,7 @@ impl Screen {
             };
 
             for update_element in window.get_updates().iter(){
-                if update_element.y > window.width || update_element.x > window.height {
+                if update_element.y > window.height || update_element.x > window.width {
                     continue;
                 }
                 let value = update_element
@@ -175,11 +171,11 @@ impl Screen {
             title_len = window.width - 1;
         }
         let top_left = (window.x as i32 - 1, window.y as i32 - 1);
-        let top_right = (window.x as i32 - 1, (window.y + window.width) as i32);
-        let bottom_left = ((window.x + window.height) as i32, window.y as i32 - 1);
-        let bottom_right = ((window.x + window.height) as i32, (window.y + window.width) as i32);
-        if top_left.0 >= 0 {
-            if top_left.1 >= 0 {
+        let top_right = ((window.x + window.width) as i32, window.y as i32 - 1);
+        let bottom_left = (window.x as i32 - 1, (window.y + window.height) as i32);
+        let bottom_right = ((window.x + window.width) as i32, (window.y + window.height) as i32);
+        if top_left.1 >= 0 {
+            if top_left.0 >= 0 {
                 // draw from top_left corner.
                 Screen::draw_value(stdout, point_map, top_left.into(), '╔'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
             }
@@ -189,34 +185,34 @@ impl Screen {
             if title_len > 0 {
                 top_line_offset = title_len + 3;
                 // draw pre-title char
-                Screen::draw_value(stdout, point_map, Point {x: top_left.0 as usize, y: top_left.1 as usize + 1 }, '╡'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
+                Screen::draw_value(stdout, point_map, Point {x: top_left.0 as usize + 1, y: top_left.1 as usize }, '╡'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
                 // draw title
-                Screen::draw_value(stdout, point_map, Point {x: top_left.0 as usize, y: top_left.1 as usize + 2 }, title.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
+                Screen::draw_value(stdout, point_map, Point {x: top_left.0 as usize + 2, y: top_left.1 as usize }, title.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
                 // draw post-title char
-                Screen::draw_value(stdout, point_map, Point {x: top_left.0 as usize, y: top_left.1 as usize + 2 + title_len}, '╞'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
+                Screen::draw_value(stdout, point_map, Point {x: top_left.0 as usize + 2 + title_len, y: top_left.1 as usize }, '╞'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
             }
             // draw from top_left to bottom_left.
-            for y in (top_left.1 + top_line_offset as i32)..top_right.1 {
-                Screen::draw_value(stdout, point_map, Point {x: top_left.0 as usize, y: y as usize}, '═'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
+            for x in (top_left.0 + top_line_offset as i32)..top_right.0 {
+                Screen::draw_value(stdout, point_map, Point {x: x as usize, y: top_left.1 as usize}, '═'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
             }
         }
-        if top_left.1 >= 0 {
+        if top_left.0 >= 0 {
             // draw from bottom_left corner.
             Screen::draw_value(stdout, point_map, bottom_left.into(), '╚'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
             // draw from top_left to bottom_left.
-            for x in (top_left.0 + 1)..bottom_left.0 {
-                Screen::draw_value(stdout, point_map, Point {x: x as usize, y: top_left.1 as usize},'║'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
+            for y in (top_left.1 + 1)..bottom_left.1 {
+                Screen::draw_value(stdout, point_map, Point {x: top_left.0 as usize, y: y as usize},'║'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
             }
         }
         // draw from bottom_right corner.
         Screen::draw_value(stdout, point_map, bottom_right.into(), '╝'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
         // draw from bottom_left to bottom_right
-        for y in (bottom_left.1 + 1)..bottom_right.1 {
-            Screen::draw_value(stdout, point_map, Point {x: bottom_left.0 as usize, y: y as usize},'═'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
+        for x in (bottom_left.0 + 1)..bottom_right.0 {
+            Screen::draw_value(stdout, point_map, Point {x: x as usize, y: bottom_left.1 as usize},'═'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
         }
         // draw from top_right to bottom_right
-        for x in (top_right.0 + 1)..bottom_right.0 {
-            Screen::draw_value(stdout, point_map, Point {x: x as usize, y: top_right.1 as usize},'║'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
+        for y in (top_right.1 + 1)..bottom_right.1 {
+            Screen::draw_value(stdout, point_map, Point {x: top_right.0 as usize, y: y as usize},'║'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
         }
         Ok(())
     }
@@ -226,13 +222,12 @@ impl Screen {
         if value_len == 0 {
             return Ok(());
         }
-
         for (i,c) in value.content().chars().enumerate() {
-            let current_point = Point {x: point.x, y: point.y + i};
+            let current_point = Point {x: point.x + i, y: point.y};
             if !point_map.contains(&current_point) {
                 point_map.insert(current_point);
                 let styled_char = StyledContent::new(value.style().clone(), c.to_string());
-                queue!(stdout, cursor::MoveTo(current_point.y as u16, current_point.x as u16), style::Print(styled_char))?;
+                queue!(stdout, cursor::MoveTo(current_point.x as u16, current_point.y as u16), style::Print(styled_char))?;
             }
         }
         Ok(())

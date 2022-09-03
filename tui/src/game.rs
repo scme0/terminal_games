@@ -20,8 +20,8 @@ impl State {
             screen: Screen::new(),
         };
         state.screen.add(Window::new(
-            10,
             5,
+            10,
             1,
             Box::from(ButtonComponent::new(Box::from("Go"), 2, 1, ClickAction::Easy)),
             true,
@@ -36,14 +36,14 @@ impl State {
                 let game = GameComponent::new(GameType::Easy);
                 let game_id = game.get_id();
                 self.screen.add(Window::new(
-                    10,
                     5,
+                    10,
                     0,
                     Box::from(game),
                     true,
                     Box::from("Easy peasy"),
                 ))?;
-                let mut button = ButtonComponent::new(Box::from("Close"), 9, 1, ClickAction::None);
+                let mut button = ButtonComponent::new(Box::from("Close"), 5, 1, ClickAction::None);
                 button.update_click_action(ClickAction::Close(vec!{button.get_id(), game_id}));
                 self.screen.add(Window::new(
                     5,
@@ -71,8 +71,8 @@ impl State {
         &mut self,
         event: MouseEvent,
     ) -> Result<()> {
-        let y = event.column as usize;
-        let x = event.row as usize;
+        let x = event.column as usize;
+        let y = event.row as usize;
         match event.kind {
             MouseEventKind::Down(_) => info!("down! {}, {}", x, y),
             MouseEventKind::Up(_) => info!("up! {}, {}", x, y),

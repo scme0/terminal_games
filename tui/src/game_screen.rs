@@ -56,7 +56,7 @@ impl Component for GameComponent {
             None => (0, 0),
             Some(engine) => engine.get_size(),
         };
-        (size.0, size.1 * 2)
+        (size.0 * 2, size.1)
     }
 
     fn get_updates(&self) -> Vec<UpdateElement> {
@@ -81,15 +81,15 @@ impl Component for GameComponent {
                 };
 
                 updates.push(UpdateElement {
-                    x: cell.x,
-                    y: cell.y * 2,
+                    y: cell.y,
+                    x: cell.x * 2,
                     value,
                     fg,
                 });
 
                 updates.push(UpdateElement {
-                    x: cell.x,
-                    y: cell.y * 2 + 1,
+                    y: cell.y,
+                    x: cell.x * 2 + 1,
                     value: char::default(),
                     fg: Color::White,
                 });
@@ -100,16 +100,16 @@ impl Component for GameComponent {
 
     fn handle_click(&mut self, click: Click) -> Result<ClickAction> {
         if let Some(engine) = &mut self.engine {
-            let (move_type, (x, mut y)) = match click {
+            let (move_type, (mut x, y)) = match click {
                 Click::Middle(p) => (Some(MoveType::Flag), p.into()),
                 Click::Right(p) => (Some(MoveType::Flag), p.into()),
                 Click::Left(p) => (Some(MoveType::Dig), p.into()),
             };
             if let Some(mov) = move_type {
-                if y % 2 == 1 {
-                    y -= 1;
+                if x % 2 == 1 {
+                    x -= 1;
                 }
-                y /= 2;
+                x /= 2;
 
                 engine.play_move(mov, Cell {x, y})?;
             }
@@ -136,18 +136,18 @@ impl CanBeEngine for TestEngine {
     fn get_board_state(&self) -> (GameState, HashMap<Cell, CellState>) {
         let mut map = HashMap::new();
         if !self.updated {
-            map.insert(Cell{x: 0, y: 0}, Checked(Zero));
-            map.insert(Cell{x: 0, y: 1}, Checked(One));
-            map.insert(Cell{x: 0, y: 2}, Checked(Two));
-            map.insert(Cell{x: 1, y: 0}, Checked(Three));
-            map.insert(Cell{x: 1, y: 1}, Checked(Four));
-            map.insert(Cell{x: 1, y: 2}, Checked(Five));
-            map.insert(Cell{x: 2, y: 0}, Checked(Six));
-            map.insert(Cell{x: 2, y: 1}, Checked(Seven));
-            map.insert(Cell{x: 2, y: 2}, Checked(Eight));
-            map.insert(Cell{x: 3, y: 0}, Unchecked);
-            map.insert(Cell{x: 3, y: 1}, Flagged);
-            map.insert(Cell{x: 3, y: 2}, Bomb);
+            map.insert(Cell{y: 0, x: 0}, Checked(Zero));
+            map.insert(Cell{y: 0, x: 1}, Checked(One));
+            map.insert(Cell{y: 0, x: 2}, Checked(Two));
+            map.insert(Cell{y: 1, x: 0}, Checked(Three));
+            map.insert(Cell{y: 1, x: 1}, Checked(Four));
+            map.insert(Cell{y: 1, x: 2}, Checked(Five));
+            map.insert(Cell{y: 2, x: 0}, Checked(Six));
+            map.insert(Cell{y: 2, x: 1}, Checked(Seven));
+            map.insert(Cell{y: 2, x: 2}, Checked(Eight));
+            map.insert(Cell{y: 3, x: 0}, Unchecked);
+            map.insert(Cell{y: 3, x: 1}, Flagged);
+            map.insert(Cell{y: 3, x: 2}, Bomb);
         }
         return (GameState::Playing, map);
     }

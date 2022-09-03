@@ -105,8 +105,8 @@ impl Engine {
         let total_cells = width * height;
         let mut board_play_state = HashMap::new();
         let mut board_state = HashMap::new();
-        for x in 0..height {
-            for y in 0..width {
+        for x in 0..width {
+            for y in 0..height {
                 board_play_state.insert(Cell{x,y}, Unchecked);
                 board_state.insert(Cell{x,y}, Checked(Zero));
             }
@@ -147,8 +147,8 @@ impl Engine {
         let mut get_bomb_or_not = || rng.gen_range(0.0..1.0) <= bomb_probability;
         let mut local_bomb_count = self.bomb_count;
         while local_bomb_count > 0 {
-            for x in 0..self.height {
-                for y in 0..self.width {
+            for x in 0..self.width {
+                for y in 0..self.height {
                     let cell = Cell {x, y};
                     // Ensure no bomb is placed on the clicked cell!
                     if  clicked_cell == cell {
@@ -201,11 +201,11 @@ impl Engine {
         let (x, y) = cell.into();
         let mut cells = vec![];
         for x_s in (x as i32 - 1)..(x as i32 + 2) {
-            if x_s < 0 || x_s >= self.height as i32 {
+            if x_s < 0 || x_s >= self.width as i32 {
                 continue;
             }
             for y_s in (y as i32 - 1)..(y as i32 + 2) {
-                if y_s < 0 || y_s >= self.width as i32 {
+                if y_s < 0 || y_s >= self.height as i32 {
                     continue;
                 }
                 if y_s == y as i32 && x_s == x as i32 {
@@ -226,7 +226,7 @@ impl Engine {
 
 impl CanBeEngine for Engine {
     fn get_size(&self) -> (usize, usize) {
-        (self.height, self.width)
+        (self.width, self.height)
     }
 
     fn get_board_state(&self) -> (GameState, HashMap<Cell,CellState>) {
@@ -234,7 +234,7 @@ impl CanBeEngine for Engine {
     }
 
     fn play_move(&mut self, move_type: MoveType, cell: Cell) -> Result<()> {
-        if cell.x > self.height || cell.y > self.width {
+        if cell.x > self.width || cell.y > self.height {
             Err(ErrorKind::new(
                 io::ErrorKind::Other,
                 "Move location is out of range",
@@ -295,13 +295,13 @@ impl CanBeEngine for Engine {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//
+//     #[test]
+//     fn it_works() {
+//         let result = add(2, 2);
+//         assert_eq!(result, 4);
+//     }
+// }
