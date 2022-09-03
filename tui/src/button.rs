@@ -39,7 +39,7 @@ impl Component for ButtonComponent {
         return (self.width, self.height);
     }
 
-    fn get_updates(&self) -> Vec<UpdateElement> {
+    fn get_updates(&mut self) -> Result<Vec<UpdateElement>> {
         let mut updates = vec![];
         if self.changed {
             let mut y = 0;
@@ -54,10 +54,9 @@ impl Component for ButtonComponent {
             let i = 0;
             for c in self.label.chars() {
                 updates.push(UpdateElement {
-                    y,
-                    x: x + i,
+                    point: (x,y).into(),
                     value: c,
-                    fg: Color::White,
+                    fg: None,
                 });
                 x += 1;
                 if x >= self.width {
@@ -65,7 +64,7 @@ impl Component for ButtonComponent {
                 }
             }
         }
-        return updates;
+        return Ok(updates);
     }
 
     fn handle_click(&mut self, click: Click) -> Result<ClickAction> {

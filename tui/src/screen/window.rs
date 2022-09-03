@@ -7,10 +7,9 @@ use crate::screen::{ClickAction, Point};
 
 #[derive(Debug, Copy, Clone)]
 pub struct UpdateElement {
-    pub x: usize,
-    pub y: usize,
+    pub point: Point,
     pub value: char,
-    pub fg: Color,
+    pub fg: Option<Color>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -44,7 +43,7 @@ impl Display for Click {
 pub trait Component {
     fn get_id(&self) -> Uuid;
     fn get_size(&self) -> (usize, usize);
-    fn get_updates(&self) -> Vec<UpdateElement>;
+    fn get_updates(&mut self) -> Result<Vec<UpdateElement>>;
     fn handle_click(&mut self, click: Click) -> Result<ClickAction>;
 }
 
@@ -64,7 +63,8 @@ pub struct Window {
     pub height: usize,
     pub show_border: bool,
     pub border_title: Box<str>,
-    component: Box<dyn Component>
+    component: Box<dyn Component>,
+    refresh: bool,
 }
 
 impl Window {
@@ -77,7 +77,11 @@ impl Window {
         border_title: Box<str>,
     ) -> Self {
         let id = component.get_id();
-        let (width, height) = component.get_size();
+        let (mut width,mut height) = component.get_size();
+        if show_border {
+            width += 1;
+            height += 1;
+        }
         return Window {
             id,
             x,
@@ -87,8 +91,66 @@ impl Window {
             height,
             show_border,
             border_title,
-            component
+            component,
+            refresh: true
         };
+    }
+
+    fn draw_border(&self) -> Result<Vec<UpdateElement>> {
+        let mut updates = vec![];
+        let mut title = self.border_title.clone();
+        let mut title_len = title.chars().count();
+        if title_len >= self.width {
+            title = Box::from(&title[..self.width - 1]);
+            title_len = self.width - 1;
+        }
+        let top_left = (0, 0);
+        let top_right = (self.width, 0);
+        let bottom_left = (0, self.height);
+        let bottom_right = (self.width, self.height);
+        if top_left.1 >= 0 {
+            if top_left.0 >= 0 {
+                // draw from top_left corner.
+                updates.push(UpdateElement {point: top_left.into(), value: '╔', fg: None});
+            }
+            // draw from top_right corner.
+            updates.push(UpdateElement {point: top_right.into(), value: '╗', fg: None});
+            let mut top_line_offset = 1;
+            if title_len > 0 {
+                top_line_offset = title_len + 3;
+                // draw pre-title char
+                updates.push(UpdateElement {point: Point {x: top_left.0 as usize + 1, y: top_left.1 as usize }, value: '╡', fg: None});
+                // draw title
+                for x in top_left.0 + 2..top_left.0 + 2 + title_len {
+                    updates.push(UpdateElement {point: Point {x: x as usize, y: top_left.1 as usize }, value: title.chars().nth(x - 2).unwrap(), fg: None});
+                }
+                // draw post-title char
+                updates.push(UpdateElement {point: Point {x: top_left.0 as usize + 2 + title_len, y: top_left.1 as usize }, value: '╡', fg: None});
+            }
+            // draw from top_left to bottom_left.
+            for x in top_left.0 + top_line_offset..top_right.0 {
+                updates.push(UpdateElement {point: Point {x: x as usize, y: top_left.1 as usize}, value: '═', fg: None});
+            }
+        }
+        if top_left.0 >= 0 {
+            // draw from bottom_left corner.
+            updates.push(UpdateElement {point: bottom_left.into(), value: '╚', fg: None});
+            // draw from top_left to bottom_left.
+            for y in (top_left.1 + 1)..bottom_left.1 {
+                updates.push(UpdateElement {point: Point {x: top_left.0 as usize, y: y as usize}, value: '║', fg: None});
+            }
+        }
+        // draw from bottom_right corner.
+        updates.push(UpdateElement {point: bottom_right.into(), value: '╝', fg: None});
+        // draw from bottom_left to bottom_right
+        for x in (bottom_left.0 + 1)..bottom_right.0 {
+            updates.push(UpdateElement {point: Point {x: x as usize, y: bottom_left.1 as usize}, value: '═', fg: None});
+        }
+        // draw from top_right to bottom_right
+        for y in (top_right.1 + 1)..bottom_right.1 {
+            updates.push(UpdateElement {point: Point {x: top_right.0 as usize, y: y as usize}, value: '║', fg: None});
+        }
+        Ok(updates)
     }
 }
 
@@ -101,13 +163,31 @@ impl Component for Window {
         self.component.get_size()
     }
 
-    fn get_updates(&self) -> Vec<UpdateElement> {
-        self.component.get_updates()
+    fn get_updates(&mut self) -> Result<Vec<UpdateElement>> {
+        let mut updates = match self.refresh && self.show_border {
+            true => self.draw_border()?,
+            false => vec![],
+        };
+
+        for update in self.component.get_updates()?.iter() {
+            let point = match self.show_border {
+                true => Point{x: update.point.x + 1, y: update.point.y + 1 },
+                false => update.point,
+            };
+            updates.push(UpdateElement {point, value: update.value, fg: update.fg });
+        }
+
+        self.refresh = false;
+
+        return Ok(updates);
     }
 
     fn handle_click(&mut self, click: Click) -> Result<ClickAction> {
         fn calculate_relative_x_y(window: &Window, point: Point) -> Point{
-            (point.x - window.x, point.y - window.y).into()
+            match window.show_border {
+                true => (point.x - window.x - 1, point.y - window.y - 1).into(),
+                false => (point.x - window.x, point.y - window.y).into()
+            }
         }
         self.component.handle_click(match click {
             Click::Middle(p) => Click::Middle(calculate_relative_x_y(self, p)),

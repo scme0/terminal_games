@@ -5,7 +5,7 @@ use minesweeper_engine::{CanBeEngine, Cell, CellState, Engine, GameState, MoveTy
 use uuid::Uuid;
 use minesweeper_engine::AdjacentBombs::{Eight, Five, Four, One, Seven, Six, Three, Two, Zero};
 use minesweeper_engine::CellState::{Bomb, Checked, Flagged, Unchecked};
-use crate::screen::ClickAction;
+use crate::screen::{ClickAction, Point};
 
 const VISUAL_TEST: bool = false;
 
@@ -59,7 +59,7 @@ impl Component for GameComponent {
         (size.0 * 2, size.1)
     }
 
-    fn get_updates(&self) -> Vec<UpdateElement> {
+    fn get_updates(&mut self) -> Result<Vec<UpdateElement>> {
         let mut updates = vec![];
         if let Some(engine) = &self.engine {
             for (cell, cell_state) in engine.get_board_state().1.iter() {
@@ -81,21 +81,19 @@ impl Component for GameComponent {
                 };
 
                 updates.push(UpdateElement {
-                    y: cell.y,
-                    x: cell.x * 2,
+                    point: (cell.x * 2, cell.y).into(),
                     value,
-                    fg,
+                    fg: Some(fg),
                 });
 
                 updates.push(UpdateElement {
-                    y: cell.y,
-                    x: cell.x * 2 + 1,
+                    point: (cell.x * 2 + 1, cell.y).into(),
                     value: char::default(),
-                    fg: Color::White,
+                    fg: None
                 });
             }
         }
-        return updates;
+        return Ok(updates);
     }
 
     fn handle_click(&mut self, click: Click) -> Result<ClickAction> {
