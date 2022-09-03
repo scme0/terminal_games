@@ -5,7 +5,7 @@ use crossterm::{cursor, queue, style::{self, Color, StyledContent, Stylize}, Err
 use log::info;
 use std::collections::{HashMap, HashSet};
 use std::io;
-use std::io::{stdout, Write};
+use std::io::{stdout, Stdout, Write};
 use uuid::Uuid;
 use window::Window;
 
@@ -37,6 +37,12 @@ impl From<Point> for (usize, usize) {
 impl From<(usize, usize)> for Point {
     fn from(p: (usize, usize)) -> Self {
         Point {x: p.0, y: p.1}
+    }
+}
+
+impl From<(i32, i32)> for Point {
+    fn from(p: (i32, i32)) -> Self {
+        Point {x: p.0 as usize, y: p.1 as usize}
     }
 }
 
@@ -74,16 +80,16 @@ impl Screen {
         queue!(stdout, terminal::Clear(terminal::ClearType::CurrentLine))?;
         queue!(stdout, terminal::Clear(terminal::ClearType::All))?;
         for window in self.windows.iter() {
+            if window.show_border{
+                self.draw_border(&mut stdout, window, &mut point_map)?;
+            }
             let some_buffer = self.buffer.get(&window.id);
             let buffer = match some_buffer {
                 Some(b) => b,
                 None => Err(ErrorKind::new(io::ErrorKind::Other, "Should always be Some here!"))?
             };
             for (point, value) in buffer.iter() {
-                if !point_map.contains(&point) {
-                    point_map.insert(point);
-                    queue!(stdout, cursor::MoveTo(point.y as u16, point.x as u16), style::Print(value))?;
-                }
+                Screen::draw_value(&mut stdout, &mut point_map, *point, value.clone())?;
             }
         }
         queue!(stdout,cursor::Hide)?;
@@ -117,15 +123,8 @@ impl Screen {
                 let absolute_y = window.y + update_element.y;
 
                 buffer.insert((absolute_x, absolute_y).into(), value.clone());
-                let key = Point {x: absolute_x, y: absolute_y};
-                if !point_map.contains(&key) {
-                    point_map.insert(key);
-                    // info!("Placing value: {}, {}, {}", updateElement.value, absolute_x, absolute_y);
-                    queue!(
-                        stdout,
-                        cursor::MoveTo(absolute_y as u16, absolute_x as u16),
-                        style::Print(value))?;
-                }
+
+                Screen::draw_value(&mut stdout,&mut point_map, Point {x: absolute_x, y: absolute_y}, value)?;
             }
 
             for (key, _) in buffer {
@@ -146,6 +145,7 @@ impl Screen {
             Err(i) => self.windows.insert(i, window)
         }
         self.buffer.insert(window_id, HashMap::new());
+        self.refresh()?;
         Ok(())
     }
 
@@ -156,5 +156,75 @@ impl Screen {
             let _window = self.windows.remove(idx);
             //TODO:draw over removed window area starting from lowest to highest z
         }
+    }
+    fn draw_border(&self, stdout: &mut Stdout, window: &Window, point_map: &mut HashSet<Point>) -> Result<()> {
+        let mut title = window.border_title.clone();
+        let mut title_len = title.len();
+        if title_len >= window.width {
+            title = Box::from(&title[..window.width - 1]);
+            title_len = window.width - 1;
+        }
+        let top_left = (window.x as i32 - 1, window.y as i32 - 1);
+        let top_right = (window.x as i32 - 1, (window.y + window.width) as i32);
+        let bottom_left = ((window.x + window.height) as i32, window.y as i32 - 1);
+        let bottom_right = ((window.x + window.height) as i32, (window.y + window.width) as i32);
+        if top_left.0 >= 0 {
+            if top_left.1 >= 0 {
+                // draw from top_left corner.
+                Screen::draw_value(stdout, point_map, top_left.into(), '╔'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
+            }
+            // draw from top_right corner.
+            Screen::draw_value(stdout, point_map, top_right.into(), '╗'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
+            let mut top_line_offset = 1;
+            if title_len > 0 {
+                top_line_offset = title_len + 3;
+                // draw pre-title char
+                Screen::draw_value(stdout, point_map, Point {x: top_left.0 as usize, y: top_left.1 as usize + 1 }, '╡'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
+                // draw title
+                Screen::draw_value(stdout, point_map, Point {x: top_left.0 as usize, y: top_left.1 as usize + 2 }, title.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
+                // draw post-title char
+                Screen::draw_value(stdout, point_map, Point {x: top_left.0 as usize, y: top_left.1 as usize + 2 + title_len}, '╞'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
+            }
+            // draw from top_left to bottom_left.
+            for y in (top_left.1 + top_line_offset as i32)..top_right.1 {
+                Screen::draw_value(stdout, point_map, Point {x: top_left.0 as usize, y: y as usize}, '═'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
+            }
+        }
+        if top_left.1 >= 0 {
+            // draw from bottom_left corner.
+            Screen::draw_value(stdout, point_map, bottom_left.into(), '╚'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
+            // draw from top_left to bottom_left.
+            for x in (top_left.0 + 1)..bottom_left.0 {
+                Screen::draw_value(stdout, point_map, Point {x: x as usize, y: top_left.1 as usize},'║'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
+            }
+        }
+        // draw from bottom_right corner.
+        Screen::draw_value(stdout, point_map, bottom_right.into(), '╝'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
+        // draw from bottom_left to bottom_right
+        for y in (bottom_left.1 + 1)..bottom_right.1 {
+            Screen::draw_value(stdout, point_map, Point {x: bottom_left.0 as usize, y: y as usize},'═'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
+        }
+        // draw from top_right to bottom_right
+        for x in (top_right.0 + 1)..bottom_right.0 {
+            Screen::draw_value(stdout, point_map, Point {x: x as usize, y: top_right.1 as usize},'║'.to_string().on(Color::Rgb { r: 0, g: 0, b: 0 }))?;
+        }
+        Ok(())
+    }
+
+    fn draw_value(stdout: &mut Stdout, point_map: &mut HashSet<Point>, point: Point, value: StyledContent<String>) -> Result<()>{
+        let value_len = value.content().len();
+        if value_len == 0 {
+            return Ok(());
+        }
+
+        for (i,c) in value.content().chars().enumerate() {
+            let current_point = Point {x: point.x, y: point.y + i};
+            if !point_map.contains(&current_point) {
+                point_map.insert(current_point);
+                let styled_char = StyledContent::new(value.style().clone(), c.to_string());
+                queue!(stdout, cursor::MoveTo(current_point.y as u16, current_point.x as u16), style::Print(styled_char))?;
+            }
+        }
+        Ok(())
     }
 }

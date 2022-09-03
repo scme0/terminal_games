@@ -23,7 +23,7 @@ impl State {
             10,
             5,
             1,
-            Box::from(ButtonComponent::new(Box::from("Go"), 5, 1, ClickAction::Easy)),
+            Box::from(ButtonComponent::new(Box::from("Go"), 2, 1, ClickAction::Easy)),
             true,
             Box::default(),
         )).expect("");
@@ -40,7 +40,7 @@ impl State {
                     0,
                     Box::from(GameComponent::new(GameType::Easy)),
                     true,
-                    Box::default(),
+                    Box::from("Easy peasy"),
                 )).expect("");
             }
             ClickAction::Medium => {}
@@ -107,12 +107,12 @@ impl State {
 }
 
 pub fn start() -> Result<()> {
-    let mut state: State = State::new();
     let mut stdout = stdout();
     execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
     terminal::enable_raw_mode()?;
     execute!(stdout, EnableMouseCapture)?;
 
+    let mut state: State = State::new();
     let result = state.game_loop();
 
     execute!(stdout, DisableMouseCapture)?;

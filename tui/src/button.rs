@@ -50,16 +50,16 @@ impl Component for ButtonComponent {
             }
             let i = 0;
             for c in self.label.chars() {
-                y += 1;
-                if y >= self.width {
-                    break;
-                }
                 updates.push(UpdateElement {
                     x,
                     y: y + i,
                     value: c,
                     fg: Color::White,
-                })
+                });
+                y += 1;
+                if y >= self.width {
+                    break;
+                }
             }
         }
         return updates;
