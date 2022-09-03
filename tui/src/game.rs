@@ -59,9 +59,16 @@ impl State {
         &mut self,
         event: MouseEvent,
     ) -> Result<()> {
+        let y = event.column as usize;
+        let x = event.row as usize;
+        match event.kind {
+            MouseEventKind::Down(_) => info!("down! {}, {}", x, y),
+            MouseEventKind::Up(_) => info!("up! {}, {}", x, y),
+            MouseEventKind::Drag(_) => info!("drag! {}, {}", x, y),
+            MouseEventKind::Moved => info!("moved! {}, {}", x, y),
+            _ => {}
+        }
         if let MouseEventKind::Down(button) = event.kind {
-            let y = event.column as usize;
-            let x = event.row as usize;
             let click = match button {
                 MouseButton::Left => Click::Left((x,y).into()),
                 MouseButton::Right => Click::Right((x,y).into()),
@@ -80,6 +87,7 @@ impl State {
             self.screen.draw()?;
             match read()? {
                 Event::Mouse(event) => self.handle_mouse_click(event)?,
+                Event::Resize(width, height) => self.handle_resize(width, height)?,
                 Event::Key(key) => match key.code {
                     KeyCode::Char(char) => {
                         if char == 'q' {
@@ -91,6 +99,10 @@ impl State {
                 _ => {}
             }
         }
+    }
+
+    fn handle_resize(&mut self, _: u16, _: u16) -> Result<()> {
+        self.screen.refresh()
     }
 }
 

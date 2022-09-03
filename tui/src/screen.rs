@@ -1,11 +1,7 @@
 pub mod window;
 
 use crate::{Click, Component};
-use crossterm::{
-    cursor, queue,
-    style::{self, Color, StyledContent, Stylize},
-    ErrorKind, Result,
-};
+use crossterm::{cursor, queue, style::{self, Color, StyledContent, Stylize}, ErrorKind, Result, terminal};
 use log::info;
 use std::collections::{HashMap, HashSet};
 use std::io;
@@ -46,7 +42,7 @@ impl From<(usize, usize)> for Point {
 
 pub struct Screen {
     windows: Vec<Window>,
-    buffer: HashMap<Uuid, HashMap<(usize,usize), StyledContent<String>>>
+    buffer: HashMap<Uuid, HashMap<Point, StyledContent<String>>>
 }
 
 impl Screen {
@@ -69,7 +65,31 @@ impl Screen {
     }
 
     // When no updates have happened but a window has been removed or the terminal has been resized.
-
+    pub fn refresh(&mut self) -> Result<()> {
+        let mut point_map = HashSet::new();
+        let mut stdout = stdout();
+        queue!(stdout, terminal::Clear(terminal::ClearType::Purge))?;
+        queue!(stdout, terminal::Clear(terminal::ClearType::FromCursorDown))?;
+        queue!(stdout, terminal::Clear(terminal::ClearType::FromCursorUp))?;
+        queue!(stdout, terminal::Clear(terminal::ClearType::CurrentLine))?;
+        queue!(stdout, terminal::Clear(terminal::ClearType::All))?;
+        for window in self.windows.iter() {
+            let some_buffer = self.buffer.get(&window.id);
+            let buffer = match some_buffer {
+                Some(b) => b,
+                None => Err(ErrorKind::new(io::ErrorKind::Other, "Should always be Some here!"))?
+            };
+            for (point, value) in buffer.iter() {
+                if !point_map.contains(&point) {
+                    point_map.insert(point);
+                    queue!(stdout, cursor::MoveTo(point.y as u16, point.x as u16), style::Print(value))?;
+                }
+            }
+        }
+        queue!(stdout,cursor::Hide)?;
+        stdout.flush()?;
+        Ok(())
+    }
 
     // Draw specific updates for a window. If the update is behind another window, it will only be buffered.
     pub fn draw(&mut self) -> Result<()> {
@@ -81,13 +101,7 @@ impl Screen {
             let some_buffer = self.buffer.get_mut(&window.id);
             let buffer = match some_buffer {
                 Some(b) => b,
-                None => {
-                    self.buffer.insert(window.id, HashMap::new());
-                    match self.buffer.get_mut(&window.id) {
-                        None => Err(ErrorKind::new(io::ErrorKind::Other, "Should always be Some here!"))?,
-                        Some(m) => m
-                    }
-                }
+                None => Err(ErrorKind::new(io::ErrorKind::Other, "Should always be Some here!"))?
             };
 
             for update_element in window.get_updates().iter(){
@@ -99,11 +113,11 @@ impl Screen {
                     .to_string()
                     .with(update_element.fg)
                     .on(Color::Rgb { r: 0, g: 0, b: 0 });
-                buffer.insert((update_element.x, update_element.y), value.clone());
-
                 let absolute_x = window.x + update_element.x;
                 let absolute_y = window.y + update_element.y;
-                let key = (absolute_x, absolute_y);
+
+                buffer.insert((absolute_x, absolute_y).into(), value.clone());
+                let key = Point {x: absolute_x, y: absolute_y};
                 if !point_map.contains(&key) {
                     point_map.insert(key);
                     // info!("Placing value: {}, {}, {}", updateElement.value, absolute_x, absolute_y);
@@ -124,12 +138,14 @@ impl Screen {
     }
 
     pub fn add(&mut self, window:Window) -> Result<()> {
-        info!("add window: {}", window.id);
+        let window_id = window.id;
+        info!("add window: {}", window_id);
         let some_idx = self.windows.binary_search_by_key(&window.z, |w| w.z);
         match some_idx {
             Ok(_) => Err(ErrorKind::new(io::ErrorKind::Other, "Window with this z value already exists"))?,
             Err(i) => self.windows.insert(i, window)
         }
+        self.buffer.insert(window_id, HashMap::new());
         Ok(())
     }
 
