@@ -25,6 +25,9 @@ impl ButtonComponent {
             click_action,
         };
     }
+    pub fn update_click_action(&mut self, click_action: ClickAction) {
+        self.click_action = click_action;
+    }
 }
 
 impl Component for ButtonComponent {
@@ -67,7 +70,7 @@ impl Component for ButtonComponent {
 
     fn handle_click(&mut self, click: Click) -> Result<ClickAction> {
         Ok(match click {
-            Click::Left(_) => self.click_action,
+            Click::Left(_) => self.click_action.clone(),
             _ => ClickAction::None
         })
     }

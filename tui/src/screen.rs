@@ -7,9 +7,10 @@ use std::collections::{HashMap, HashSet};
 use std::io;
 use std::io::{stdout, Stdout, Write};
 use uuid::Uuid;
+use minesweeper_engine::CompleteState::Win;
 use window::Window;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum ClickAction {
     None,
     Easy,
@@ -18,7 +19,7 @@ pub enum ClickAction {
     Quit,
     Home,
     Retry,
-    Close(Uuid)
+    Close(Vec<Uuid>)
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -149,14 +150,23 @@ impl Screen {
         Ok(())
     }
 
-    pub fn remove(&mut self, window_id: Uuid) {
-        info!("remove window: {}", window_id);
-        let some_idx = self.windows.iter().enumerate().find(|w| w.1.id == window_id);
-        if let Some((idx, _)) = some_idx {
-            let _window = self.windows.remove(idx);
-            //TODO:draw over removed window area starting from lowest to highest z
+    pub fn remove_all(&mut self, window_ids: Vec<Uuid>) -> Result<()> {
+        let mut windows_removed = false;
+        for window_id in window_ids.iter() {
+            info!("remove window: {}", window_id);
+            let some_idx = self.windows.iter().enumerate().find(|w| w.1.id == *window_id);
+            if let Some((idx, _)) = some_idx {
+                let window = self.windows.remove(idx);
+                self.buffer.remove(&window.id);
+                windows_removed = true;
+            }
         }
+        if windows_removed {
+            self.refresh()?;
+        }
+        Ok(())
     }
+
     fn draw_border(&self, stdout: &mut Stdout, window: &Window, point_map: &mut HashSet<Point>) -> Result<()> {
         let mut title = window.border_title.clone();
         let mut title_len = title.len();

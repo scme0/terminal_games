@@ -1,4 +1,4 @@
-use crate::{ButtonComponent, Click, GameComponent, Window};
+use crate::{ButtonComponent, Click, Component, GameComponent, Window};
 use crossterm::event::{
     read, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, MouseButton,
     MouseEvent, MouseEventKind,
@@ -30,29 +30,41 @@ impl State {
         return state;
     }
 
-    fn handle_click_action(&mut self, click_action: ClickAction){
+    fn handle_click_action(&mut self, click_action: ClickAction) -> Result<()>{
         match click_action {
             ClickAction::Easy => {
-                info!("here!");
+                let game = GameComponent::new(GameType::Easy);
+                let game_id = game.get_id();
                 self.screen.add(Window::new(
                     10,
                     5,
                     0,
-                    Box::from(GameComponent::new(GameType::Easy)),
+                    Box::from(game),
                     true,
                     Box::from("Easy peasy"),
-                )).expect("");
+                ))?;
+                let mut button = ButtonComponent::new(Box::from("Close"), 9, 1, ClickAction::None);
+                button.update_click_action(ClickAction::Close(vec!{button.get_id(), game_id}));
+                self.screen.add(Window::new(
+                    5,
+                    5,
+                    2,
+                    Box::from(button),
+                    true,
+                    Box::default(),
+                ))?;
             }
             ClickAction::Medium => {}
             ClickAction::Hard => {}
             ClickAction::Quit => {}
             ClickAction::Home => {}
             ClickAction::Retry => {}
-            ClickAction::Close(window_id) => {
-                self.screen.remove(window_id);
+            ClickAction::Close(window_ids) => {
+                self.screen.remove_all(window_ids)?;
             }
             _ => {}
         }
+        Ok(())
     }
 
     fn handle_mouse_click(
@@ -76,7 +88,7 @@ impl State {
             };
             let click_action = self.screen.handle_click(click)?;
 
-            self.handle_click_action(click_action);
+            self.handle_click_action(click_action)?;
         }
         Ok(())
     }
