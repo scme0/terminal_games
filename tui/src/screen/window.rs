@@ -19,6 +19,36 @@ pub enum Click {
     Right(Point)
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum BorderStyle {
+    None,
+    Double,
+    Single,
+    Dotted
+}
+
+struct BorderElements {
+    top_left: char,
+    top_right: char,
+    bottom_left: char,
+    bottom_right: char,
+    horizontal: char,
+    vertical: char,
+    label_frame_left: char,
+    label_frame_right: char
+}
+
+impl BorderElements {
+    fn new(border_style: BorderStyle) -> Self {
+        match border_style {
+            BorderStyle::Double => BorderElements { top_left: '╔', top_right: '╗', bottom_left: '╚', bottom_right: '╝', horizontal: '═', vertical: '║', label_frame_left: '╡', label_frame_right: '╞'},
+            BorderStyle::Single => BorderElements { top_left: '┏', top_right: '┓', bottom_left: '┗', bottom_right: '┛', horizontal: '━', vertical: '┃', label_frame_left: '┫', label_frame_right: '┣'},
+            BorderStyle::Dotted => BorderElements { top_left: '┏', top_right: '┓', bottom_left: '┗', bottom_right: '┛', horizontal: '┅', vertical: '┇', label_frame_left: '╏', label_frame_right: '╏'},
+            BorderStyle::None => BorderElements { top_left: '\0', top_right: '\0', bottom_left: '\0', bottom_right: '\0', horizontal: '\0', vertical: '\0', label_frame_left: '\0', label_frame_right: '\0'},
+        }
+    }
+}
+
 impl Click {
     pub fn to_point(&self) -> Point {
         match *self {
@@ -61,8 +91,8 @@ pub struct Window {
     pub y: usize,
     pub width: usize,
     pub height: usize,
-    pub show_border: bool,
-    pub border_title: Box<str>,
+    border_style: BorderStyle,
+    border_title: Box<str>,
     component: Box<dyn Component>,
     refresh: bool,
 }
@@ -73,12 +103,12 @@ impl Window {
         y: usize,
         z: i32,
         component: Box<dyn Component>,
-        show_border: bool,
+        border_style: BorderStyle,
         border_title: Box<str>,
     ) -> Self {
         let id = component.get_id();
         let (mut width,mut height) = component.get_size();
-        if show_border {
+        if border_style != BorderStyle::None {
             width += 1;
             height += 1;
         }
@@ -89,7 +119,7 @@ impl Window {
             z,
             width,
             height,
-            show_border,
+            border_style,
             border_title,
             component,
             refresh: true
@@ -97,6 +127,7 @@ impl Window {
     }
 
     fn draw_border(&self) -> Result<Vec<UpdateElement>> {
+        let border_elements = BorderElements::new(self.border_style);
         let mut updates = vec![];
         let mut title = self.border_title.clone();
         let mut title_len = title.chars().count();
@@ -111,44 +142,44 @@ impl Window {
         if top_left.1 >= 0 {
             if top_left.0 >= 0 {
                 // draw from top_left corner.
-                updates.push(UpdateElement {point: top_left.into(), value: '╔', fg: None});
+                updates.push(UpdateElement {point: top_left.into(), value: border_elements.top_left, fg: None});
             }
             // draw from top_right corner.
-            updates.push(UpdateElement {point: top_right.into(), value: '╗', fg: None});
+            updates.push(UpdateElement {point: top_right.into(), value: border_elements.top_right, fg: None});
             let mut top_line_offset = 1;
             if title_len > 0 {
                 top_line_offset = title_len + 3;
                 // draw pre-title char
-                updates.push(UpdateElement {point: Point {x: top_left.0 as usize + 1, y: top_left.1 as usize }, value: '╡', fg: None});
+                updates.push(UpdateElement {point: Point {x: top_left.0 as usize + 1, y: top_left.1 as usize }, value: border_elements.label_frame_left, fg: None});
                 // draw title
                 for x in top_left.0 + 2..top_left.0 + 2 + title_len {
                     updates.push(UpdateElement {point: Point {x: x as usize, y: top_left.1 as usize }, value: title.chars().nth(x - 2).unwrap(), fg: None});
                 }
                 // draw post-title char
-                updates.push(UpdateElement {point: Point {x: top_left.0 as usize + 2 + title_len, y: top_left.1 as usize }, value: '╡', fg: None});
+                updates.push(UpdateElement {point: Point {x: top_left.0 as usize + 2 + title_len, y: top_left.1 as usize }, value: border_elements.label_frame_right, fg: None});
             }
             // draw from top_left to bottom_left.
             for x in top_left.0 + top_line_offset..top_right.0 {
-                updates.push(UpdateElement {point: Point {x: x as usize, y: top_left.1 as usize}, value: '═', fg: None});
+                updates.push(UpdateElement {point: Point {x: x as usize, y: top_left.1 as usize}, value: border_elements.horizontal, fg: None});
             }
         }
         if top_left.0 >= 0 {
             // draw from bottom_left corner.
-            updates.push(UpdateElement {point: bottom_left.into(), value: '╚', fg: None});
+            updates.push(UpdateElement {point: bottom_left.into(), value: border_elements.bottom_left, fg: None});
             // draw from top_left to bottom_left.
             for y in (top_left.1 + 1)..bottom_left.1 {
-                updates.push(UpdateElement {point: Point {x: top_left.0 as usize, y: y as usize}, value: '║', fg: None});
+                updates.push(UpdateElement {point: Point {x: top_left.0 as usize, y: y as usize}, value: border_elements.vertical, fg: None});
             }
         }
         // draw from bottom_right corner.
-        updates.push(UpdateElement {point: bottom_right.into(), value: '╝', fg: None});
+        updates.push(UpdateElement {point: bottom_right.into(), value: border_elements.bottom_right, fg: None});
         // draw from bottom_left to bottom_right
         for x in (bottom_left.0 + 1)..bottom_right.0 {
-            updates.push(UpdateElement {point: Point {x: x as usize, y: bottom_left.1 as usize}, value: '═', fg: None});
+            updates.push(UpdateElement {point: Point {x: x as usize, y: bottom_left.1 as usize}, value: border_elements.horizontal, fg: None});
         }
         // draw from top_right to bottom_right
         for y in (top_right.1 + 1)..bottom_right.1 {
-            updates.push(UpdateElement {point: Point {x: top_right.0 as usize, y: y as usize}, value: '║', fg: None});
+            updates.push(UpdateElement {point: Point {x: top_right.0 as usize, y: y as usize}, value: border_elements.vertical, fg: None});
         }
         Ok(updates)
     }
@@ -164,13 +195,13 @@ impl Component for Window {
     }
 
     fn get_updates(&mut self) -> Result<Vec<UpdateElement>> {
-        let mut updates = match self.refresh && self.show_border {
+        let mut updates = match self.refresh && self.border_style != BorderStyle::None {
             true => self.draw_border()?,
             false => vec![],
         };
 
         for update in self.component.get_updates()?.iter() {
-            let point = match self.show_border {
+            let point = match self.border_style != BorderStyle::None {
                 true => Point{x: update.point.x + 1, y: update.point.y + 1 },
                 false => update.point,
             };
@@ -184,7 +215,7 @@ impl Component for Window {
 
     fn handle_click(&mut self, click: Click) -> Result<ClickAction> {
         fn calculate_relative_x_y(window: &Window, point: Point) -> Point{
-            match window.show_border {
+            match window.border_style != BorderStyle::None {
                 true => (point.x - window.x - 1, point.y - window.y - 1).into(),
                 false => (point.x - window.x, point.y - window.y).into()
             }

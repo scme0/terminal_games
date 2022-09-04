@@ -9,6 +9,7 @@ use std::io;
 use std::io::stdout;
 use crate::game_screen::GameType;
 use crate::screen::{ClickAction, Screen};
+use crate::screen::window::BorderStyle;
 
 struct State {
     screen: Screen,
@@ -24,7 +25,7 @@ impl State {
             10,
             1,
             Box::from(ButtonComponent::new(Box::from("Go"), 2, 1, ClickAction::Easy)),
-            true,
+            BorderStyle::Single,
             Box::default(),
         )).expect("");
         return state;
@@ -40,7 +41,7 @@ impl State {
                     10,
                     0,
                     Box::from(game),
-                    true,
+                    BorderStyle::Double,
                     Box::from("Easy peasy"),
                 ))?;
                 let mut button = ButtonComponent::new(Box::from("Close"), 5, 1, ClickAction::None);
@@ -50,7 +51,7 @@ impl State {
                     5,
                     2,
                     Box::from(button),
-                    true,
+                    BorderStyle::Dotted,
                     Box::default(),
                 ))?;
             }
