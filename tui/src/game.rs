@@ -115,7 +115,7 @@ impl State {
         let mut y = event.row as i32;
         let some_click = match event.kind {
             MouseEventKind::Down(button) => {
-                info!("down! {}, {}, {:?}", x, y, button);
+                // info!("down! {}, {}, {:?}", x, y, button);
                 match button {
                     MouseButton::Left => {
                         let point = (x,y).into();
@@ -127,7 +127,7 @@ impl State {
                 }
             },
             MouseEventKind::Up(button) => {
-                info!("up! {}, {}, {:?}", x, y, button);
+                // info!("up! {}, {}, {:?}", x, y, button);
                 match button {
                     MouseButton::Left => Some(UpLeft((x, y).into())),
                     MouseButton::Right => Some(UpRight((x, y).into())),
@@ -144,7 +144,7 @@ impl State {
                         let to = (x, y).into();
                         let from = self.last_left_click;
                         self.last_left_click = to;
-                        info!("drag! {:?}, {:?}", to, from);
+                        // info!("drag! {:?}, {:?}", to, from);
                         Some(Drag(from, to))
 
                     },

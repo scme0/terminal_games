@@ -110,7 +110,7 @@ pub struct Window {
     border_title: Box<str>,
     component: Box<dyn Component>,
     pub refresh: bool,
-    can_move: bool,
+    pub can_move: bool,
     close_point: Option<Point>,
 }
 
@@ -128,12 +128,12 @@ impl Window {
         let id = component.get_id();
         let (mut width,mut height) = component.get_size();
         if border_style != BorderStyle::None {
-            width += 1;
+            width += 4;
             height += 1;
         }
 
         let close_point = match can_close {
-            true => Some((width - 2, 0).into()),
+            true => Some((width - 4, 0).into()),
             false => None,
         };
 
@@ -162,17 +162,28 @@ impl Window {
             title = Box::from(&title[..(self.width - 2) as usize]);
             title_len = self.width - 1;
         }
-        let top_left = (0, 0);
-        let top_right = (self.width, 0);
-        let bottom_left = (0, self.height);
-        let bottom_right = (self.width, self.height);
-        if top_left.1 >= 0 {
-            if top_left.0 >= 0 {
+        let top_left:Point = (0, 0).into();
+        let b_top_left = top_left + (1,0).into();
+        let top_right:Point = (self.width, 0).into();
+        let b_top_right = top_right + (-2,0).into();
+        let bottom_left:Point = (0, self.height).into();
+        let b_bottom_left = bottom_left + (1,0).into();
+        let bottom_right:Point = (self.width, self.height).into();
+        let b_bottom_right = bottom_right + (-2,0).into();
+        for y in top_left.y..bottom_left.y+1 {
+            updates.push(UpdateElement {point: (top_left.x, y).into(), value: ' ', fg: None});
+        }
+        for y in top_right.y..bottom_right.y+1 {
+            updates.push(UpdateElement {point: (top_right.x-1, y).into(), value: ' ', fg: None});
+        }
+
+        if b_top_left.y >= 0 {
+            if b_top_left.x >= 0 {
                 // draw top_left corner.
-                updates.push(UpdateElement {point: top_left.into(), value: border_elements.top_left, fg: None});
+                updates.push(UpdateElement {point: b_top_left, value: border_elements.top_left, fg: None});
             }
             // draw top_right corner.
-            updates.push(UpdateElement {point: top_right.into(), value: border_elements.top_right, fg: None});
+            updates.push(UpdateElement {point: b_top_right, value: border_elements.top_right, fg: None});
 
             let mut top_line_right_offset = 0;
             if let Some(close_pos) = self.close_point {
@@ -186,36 +197,36 @@ impl Window {
             if title_len > 0 {
                 top_line_offset = title_len + 3;
                 // draw pre-title char
-                updates.push(UpdateElement {point: Point {x: top_left.0 + 1, y: top_left.1 }, value: border_elements.label_frame_left, fg: None});
+                updates.push(UpdateElement {point: (b_top_left.x + 1, b_top_left.y).into(), value: border_elements.label_frame_left, fg: None});
                 // draw title
-                for x in top_left.0 + 2..top_left.0 + 2 + title_len {
-                    updates.push(UpdateElement {point: Point {x, y: top_left.1 }, value: title.chars().nth(x as usize - 2).unwrap(), fg: None});
+                for x in b_top_left.x + 2..b_top_left.x + 2 + title_len {
+                    updates.push(UpdateElement {point: (x, b_top_left.y).into(), value: title.chars().nth(x as usize - 3).unwrap(), fg: None});
                 }
                 // draw post-title char
-                updates.push(UpdateElement {point: Point {x: top_left.0 + 2 + title_len, y: top_left.1 }, value: border_elements.label_frame_right, fg: None});
+                updates.push(UpdateElement {point: (b_top_left.x + 2 + title_len, b_top_left.y).into(), value: border_elements.label_frame_right, fg: None});
             }
             // draw from top_left to top_right.
-            for x in top_left.0 + top_line_offset..top_right.0 - top_line_right_offset {
-                updates.push(UpdateElement {point: Point {x, y: top_left.1}, value: border_elements.horizontal, fg: None});
+            for x in b_top_left.x + top_line_offset..b_top_right.x - top_line_right_offset {
+                updates.push(UpdateElement {point: (x, b_top_left.y).into(), value: border_elements.horizontal, fg: None});
             }
         }
-        if top_left.0 >= 0 {
+        if top_left.x >= 0 {
             // draw bottom_left corner.
-            updates.push(UpdateElement {point: bottom_left.into(), value: border_elements.bottom_left, fg: None});
+            updates.push(UpdateElement {point: b_bottom_left.into(), value: border_elements.bottom_left, fg: None});
             // draw from top_left to bottom_left.
-            for y in (top_left.1 + 1)..bottom_left.1 {
-                updates.push(UpdateElement {point: Point {x: top_left.0, y}, value: border_elements.vertical, fg: None});
+            for y in (b_top_left.y + 1)..b_bottom_left.y {
+                updates.push(UpdateElement {point: (b_top_left.x, y).into(), value: border_elements.vertical, fg: None});
             }
         }
         // draw bottom_right corner.
-        updates.push(UpdateElement {point: bottom_right.into(), value: border_elements.bottom_right, fg: None});
+        updates.push(UpdateElement {point: b_bottom_right.into(), value: border_elements.bottom_right, fg: None});
         // draw from bottom_left to bottom_right
-        for x in (bottom_left.0 + 1)..bottom_right.0 {
-            updates.push(UpdateElement {point: Point {x, y: bottom_left.1}, value: border_elements.horizontal, fg: None});
+        for x in (b_bottom_left.x + 1)..b_bottom_right.x {
+            updates.push(UpdateElement {point: (x, b_bottom_left.y).into(), value: border_elements.horizontal, fg: None});
         }
         // draw from top_right to bottom_right
-        for y in (top_right.1 + 1)..bottom_right.1 {
-            updates.push(UpdateElement {point: Point {x: top_right.0, y}, value: border_elements.vertical, fg: None});
+        for y in (b_top_right.y + 1)..b_bottom_right.y {
+            updates.push(UpdateElement {point: (b_top_right.x, y).into(), value: border_elements.vertical, fg: None});
         }
         Ok(updates)
     }
@@ -238,7 +249,7 @@ impl Component for Window {
 
         for update in self.component.get_updates()?.iter() {
             let point = match self.border_style != BorderStyle::None {
-                true => Point{x: update.point.x + 1, y: update.point.y + 1 },
+                true => Point{x: update.point.x + 2, y: update.point.y + 1 },
                 false => update.point,
             };
             updates.push(UpdateElement {point, value: update.value, fg: update.fg });
@@ -253,7 +264,7 @@ impl Component for Window {
         info!("A mouse action! {:?}", mouse_action);
         let action_point = mouse_action.to_point();
         if self.border_style != BorderStyle::None &&
-            (action_point.x == 0 || action_point.x == self.width
+            (action_point.x == 0 || action_point.x == 1 || action_point.x == self.width - 1 || action_point.x == self.width - 2
                 || action_point.y == 0 || action_point.y == self.height){
             match mouse_action {
                 MouseAction::DownLeft(_) => {
@@ -266,7 +277,7 @@ impl Component for Window {
                 MouseAction::Drag(starting_point, drag_point) => {
                     if self.can_move {
                         let movement_vector = starting_point - drag_point;
-                        info!("Dragging: {:?}, {:?}, {:?}", starting_point, drag_point, movement_vector);
+                        // info!("Dragging: {:?}, {:?}, {:?}", starting_point, drag_point, movement_vector);
                         let mut new_x = self.x - movement_vector.x;
                         let mut new_y = self.y - movement_vector.y;
                         if new_x < 0 {
@@ -281,7 +292,7 @@ impl Component for Window {
                             self.x = new_x;
                             self.y = new_y;
                             self.refresh = true;
-                            info!("moved window: {}, {}", self.x, self.y);
+                            // info!("moved window: {}, {}", self.x, self.y);
                         }
                     }
                     return Ok(ClickAction::None);
@@ -290,7 +301,7 @@ impl Component for Window {
             }
         } else {
             let rel_point = calculate_relative_x_y(self, action_point);
-            info!("Going to send this click to the component at point: {:?}, orig: {:?}, win.x {:?}, win.y {:?}", rel_point, action_point, self.x, self.y);
+            // info!("Going to send this click to the component at point: {:?}, orig: {:?}, win.x {:?}, win.y {:?}", rel_point, action_point, self.x, self.y);
             return match mouse_action {
                 MouseAction::DownMiddle(_) => self.component.handle_click(MouseAction::DownMiddle(rel_point)),
                 MouseAction::DownLeft(_) => self.component.handle_click(MouseAction::DownLeft(rel_point)),
@@ -305,7 +316,7 @@ impl Component for Window {
 fn calculate_relative_x_y(window: &Window, point: Point) -> Point{
     match window.border_style != BorderStyle::None {
         true => {
-            (point.x - 1, point.y - 1).into()
+            (point.x - 2, point.y - 1).into()
         },
         false => point
     }

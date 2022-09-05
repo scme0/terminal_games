@@ -1,5 +1,6 @@
 pub mod window;
 
+use std::cmp::Ordering;
 use crate::{MouseAction, Component};
 use crossterm::{cursor, queue, style::{self, Color, StyledContent, Stylize}, ErrorKind, Result, terminal};
 use log::info;
@@ -79,10 +80,13 @@ impl Screen {
     // Gets the top-most window for a specific point.
     pub fn handle_click(&mut self, click: MouseAction) -> Result<ClickAction> {
         let (x,y) = click.to_point().into();
-        for window in self.windows.iter_mut() {
-            if x >= window.x && x < window.x + window.width + 1 &&
-                y >= window.y && y < window.y + window.height + 1 {
-                info!("got hit: {}", window.id);
+        let some_window = self.windows.iter_mut().enumerate().find(|(i,w)| {
+            return x >= w.x && x < w.x + w.width + 1 &&
+                y >= w.y && y < w.y + w.height + 1;
+        });
+        if let Some((idx, window)) = some_window {
+            // info!("got hit: {}", window.id);
+            if !window.can_move || window.z == 0 {
                 let mut p = click.to_point();
                 p.x -= window.x;
                 p.y -= window.y;
@@ -99,6 +103,28 @@ impl Screen {
                         MouseAction::Drag(p, to)
                     }
                 });
+            } else {
+                info!("Here!: {:?}", click);
+                if let MouseAction::DownLeft(_) = click {
+                    info!("will do stuff after here...");
+                    //info!("will shuffle: {:?}", self.windows.iter().map(|w| (w.z, w.id)));
+                    self.shuffle_windows_back_from_z(0, 0);
+                    //info!("shuffled: {:?}", self.windows.iter().map(|w| (w.z, w.id)));
+                    self.windows[idx].z = 0;
+                    //info!("zeroed this window: {:?}", self.windows.iter().map(|w| (w.z, w.id)));
+                    self.windows.sort_by(|w1,w2| {
+                        return if w1.z > w2.z {
+                            Ordering::Greater
+                        } else if w1.z < w2.z {
+                            Ordering::Less
+                        } else {
+                            Ordering::Equal
+                        }
+                    });
+                    //info!("sorted: {:?}", self.windows.iter().map(|w| (w.z, w.id)));
+                    self.refresh()?;
+                }
+                info!("After Here!...");
             }
         }
         return Ok(ClickAction::None);
@@ -183,10 +209,13 @@ impl Screen {
 
     pub fn add(&mut self, window:Window) -> Result<()> {
         let window_id = window.id;
-        info!("add window: {}", window_id);
+        // info!("add window: {}", window_id);
         let some_idx = self.windows.binary_search_by_key(&window.z, |w| w.z);
         match some_idx {
-            Ok(_) => Err(ErrorKind::new(io::ErrorKind::Other, "Window with this z value already exists"))?,
+            Ok(i) => {
+                self.shuffle_windows_back_from_z(i, window.z);
+                self.windows.insert(i, window);
+            },
             Err(i) => self.windows.insert(i, window)
         }
         self.buffer.insert(window_id, HashMap::new());
@@ -194,10 +223,20 @@ impl Screen {
         Ok(())
     }
 
+    fn shuffle_windows_back_from_z(&mut self, start_index:usize, z: i32){
+        let mut prev_z = z;
+        for idx in start_index..self.windows.len() {
+            if self.windows[idx].z == prev_z {
+                self.windows[idx].z += 1;
+                prev_z = self.windows[idx].z;
+            }
+        }
+    }
+
     pub fn remove_all(&mut self, window_ids: Vec<Uuid>) -> Result<()> {
         let mut windows_removed = false;
         for window_id in window_ids.iter() {
-            info!("remove window: {}", window_id);
+            // info!("remove window: {}", window_id);
             let some_idx = self.windows.iter().enumerate().find(|w| w.1.id == *window_id);
             if let Some((idx, _)) = some_idx {
                 let window = self.windows.remove(idx);
