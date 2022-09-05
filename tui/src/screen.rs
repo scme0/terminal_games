@@ -6,7 +6,7 @@ use log::info;
 use std::collections::{HashMap, HashSet};
 use std::io;
 use std::io::{stdout, Stdout, Write};
-use std::ops::Sub;
+use std::ops::{Add, Sub};
 use uuid::Uuid;
 use minesweeper_engine::CompleteState::Win;
 use window::Window;
@@ -40,7 +40,15 @@ impl Sub for Point {
     type Output = Point;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        Point {x: self.x - rhs.x, y: self.y - rhs.y}
+        (self.x - rhs.x, self.y - rhs.y).into()
+    }
+}
+
+impl Add for Point {
+    type Output = Point;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        (self.x + rhs.x, self.y + rhs.y).into()
     }
 }
 

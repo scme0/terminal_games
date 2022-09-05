@@ -25,45 +25,77 @@ impl State {
             last_left_click: (0,0).into()
         };
         state.screen.add(Window::new(
-            5,
             10,
-            1,
-            Box::from(ButtonComponent::new(Box::from("Go"), 2, 1, ClickAction::Easy)),
+            5,
+            99,
+            Box::from(ButtonComponent::new(Box::from("Easy"), 6, 1, ClickAction::Easy)),
             BorderStyle::Single,
             Box::default(),
             false,
+            false
         )).expect("");
+        state.screen.add(Window::new(
+            20,
+            5,
+            98,
+            Box::from(ButtonComponent::new(Box::from("Medium"), 6, 1, ClickAction::Medium)),
+            BorderStyle::Single,
+            Box::default(),
+            false,
+            false
+        )).expect("");
+        state.screen.add(Window::new(
+            30,
+            5,
+            97,
+            Box::from(ButtonComponent::new(Box::from("Hard"), 6, 1, ClickAction::Hard)),
+            BorderStyle::Single,
+            Box::default(),
+            false,
+            false
+        )).expect("");
+
         return state;
     }
 
     fn handle_click_action(&mut self, click_action: ClickAction) -> Result<()>{
         match click_action {
             ClickAction::Easy => {
-                let game = GameComponent::new(GameType::Easy);
-                let game_id = game.get_id();
                 self.screen.add(Window::new(
                     5,
                     10,
                     0,
-                    Box::from(game),
+                    Box::from(GameComponent::new(GameType::Easy)),
                     BorderStyle::Double,
                     Box::from("Easy peasy"),
-                    false,
-                ))?;
-                let mut button = ButtonComponent::new(Box::from("Close"), 5, 1, ClickAction::None);
-                button.update_click_action(ClickAction::Close(vec!{button.get_id(), game_id}));
-                self.screen.add(Window::new(
-                    5,
-                    5,
-                    2,
-                    Box::from(button),
-                    BorderStyle::Dotted,
-                    Box::default(),
-                    false,
+                    true,
+                    true
                 ))?;
             }
-            ClickAction::Medium => {}
-            ClickAction::Hard => {}
+            ClickAction::Medium => {
+                self.screen.add(Window::new(
+                    5,
+                    10,
+                    0,
+                    Box::from(GameComponent::new(GameType::Medium)),
+                    BorderStyle::Double,
+                    Box::from("Medium meh"),
+                    true,
+                    true
+                ))?;
+            }
+            ClickAction::Hard => {
+                self.screen.add(Window::new(
+                    5,
+                    10,
+                    0,
+                    Box::from(GameComponent::new(GameType::Hard)),
+                    BorderStyle::Double,
+                    Box::from("Hard shmard"),
+                    true,
+                    true
+                ))?;
+            }
             ClickAction::Quit => {}
             ClickAction::Home => {}
             ClickAction::Retry => {}

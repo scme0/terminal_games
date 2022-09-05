@@ -6,6 +6,7 @@ use crossterm::event::Event::Mouse;
 use log::info;
 use uuid::Uuid;
 use crate::screen::{ClickAction, Point};
+use crate::screen::ClickAction::Close;
 
 #[derive(Debug, Copy, Clone)]
 pub struct UpdateElement {
@@ -110,6 +111,7 @@ pub struct Window {
     component: Box<dyn Component>,
     pub refresh: bool,
     can_move: bool,
+    close_point: Option<Point>,
 }
 
 impl Window {
@@ -121,6 +123,7 @@ impl Window {
         border_style: BorderStyle,
         border_title: Box<str>,
         can_move: bool,
+        can_close: bool
     ) -> Self {
         let id = component.get_id();
         let (mut width,mut height) = component.get_size();
@@ -128,6 +131,12 @@ impl Window {
             width += 1;
             height += 1;
         }
+
+        let close_point = match can_close {
+            true => Some((width - 2, 0).into()),
+            false => None,
+        };
+
         return Window {
             id,
             x,
@@ -140,6 +149,7 @@ impl Window {
             component,
             can_move,
             refresh: true,
+            close_point
         };
     }
 
@@ -149,7 +159,7 @@ impl Window {
         let mut title = self.border_title.clone();
         let mut title_len = title.chars().count() as i32;
         if title_len >= self.width {
-            title = Box::from(&title[..(self.width - 1) as usize]);
+            title = Box::from(&title[..(self.width - 2) as usize]);
             title_len = self.width - 1;
         }
         let top_left = (0, 0);
@@ -158,11 +168,20 @@ impl Window {
         let bottom_right = (self.width, self.height);
         if top_left.1 >= 0 {
             if top_left.0 >= 0 {
-                // draw from top_left corner.
+                // draw top_left corner.
                 updates.push(UpdateElement {point: top_left.into(), value: border_elements.top_left, fg: None});
             }
-            // draw from top_right corner.
+            // draw top_right corner.
             updates.push(UpdateElement {point: top_right.into(), value: border_elements.top_right, fg: None});
+
+            let mut top_line_right_offset = 0;
+            if let Some(close_pos) = self.close_point {
+                top_line_right_offset = 2;
+                // draw Close button.
+                updates.push(UpdateElement {point: close_pos, value: 'Ⓧ', fg: None});
+                updates.push(UpdateElement {point: close_pos + (1,0).into(), value: ' ', fg: None});
+            }
+
             let mut top_line_offset = 1;
             if title_len > 0 {
                 top_line_offset = title_len + 3;
@@ -175,20 +194,20 @@ impl Window {
                 // draw post-title char
                 updates.push(UpdateElement {point: Point {x: top_left.0 + 2 + title_len, y: top_left.1 }, value: border_elements.label_frame_right, fg: None});
             }
-            // draw from top_left to bottom_left.
-            for x in top_left.0 + top_line_offset..top_right.0 {
+            // draw from top_left to top_right.
+            for x in top_left.0 + top_line_offset..top_right.0 - top_line_right_offset {
                 updates.push(UpdateElement {point: Point {x, y: top_left.1}, value: border_elements.horizontal, fg: None});
             }
         }
         if top_left.0 >= 0 {
-            // draw from bottom_left corner.
+            // draw bottom_left corner.
             updates.push(UpdateElement {point: bottom_left.into(), value: border_elements.bottom_left, fg: None});
             // draw from top_left to bottom_left.
             for y in (top_left.1 + 1)..bottom_left.1 {
                 updates.push(UpdateElement {point: Point {x: top_left.0, y}, value: border_elements.vertical, fg: None});
             }
         }
-        // draw from bottom_right corner.
+        // draw bottom_right corner.
         updates.push(UpdateElement {point: bottom_right.into(), value: border_elements.bottom_right, fg: None});
         // draw from bottom_left to bottom_right
         for x in (bottom_left.0 + 1)..bottom_right.0 {
@@ -238,27 +257,32 @@ impl Component for Window {
                 || action_point.y == 0 || action_point.y == self.height){
             match mouse_action {
                 MouseAction::DownLeft(_) => {
-                    info!("Border click detected: {:?}", action_point);
-                    // self.boarder_grab_point = Some(action_point);
+                    if let Some(close_point) = self.close_point {
+                        if action_point == close_point || action_point == close_point + (1,0).into() {
+                            return Ok(Close(vec![self.get_id()]))
+                        }
+                    }
                 }
                 MouseAction::Drag(starting_point, drag_point) => {
-                    let movement_vector = starting_point - drag_point;
-                    info!("Dragging: {:?}, {:?}, {:?}", starting_point, drag_point, movement_vector);
-                    let mut new_x = self.x - movement_vector.x;
-                    let mut new_y = self.y - movement_vector.y;
-                    if new_x < 0 {
-                        new_x = 0;
-                    }
+                    if self.can_move {
+                        let movement_vector = starting_point - drag_point;
+                        info!("Dragging: {:?}, {:?}, {:?}", starting_point, drag_point, movement_vector);
+                        let mut new_x = self.x - movement_vector.x;
+                        let mut new_y = self.y - movement_vector.y;
+                        if new_x < 0 {
+                            new_x = 0;
+                        }
 
-                    if new_y < 0 {
-                        new_y = 0;
-                    }
+                        if new_y < 0 {
+                            new_y = 0;
+                        }
 
-                    if self.x != new_x || self.y != new_y {
-                        self.x = new_x;
-                        self.y = new_y;
-                        self.refresh = true;
-                        info!("moved window: {}, {}", self.x, self.y);
+                        if self.x != new_x || self.y != new_y {
+                            self.x = new_x;
+                            self.y = new_y;
+                            self.refresh = true;
+                            info!("moved window: {}, {}", self.x, self.y);
+                        }
                     }
                     return Ok(ClickAction::None);
                 }
