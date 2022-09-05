@@ -1,4 +1,4 @@
-use crate::{ButtonComponent, Click, Component, GameComponent, Window};
+use crate::{ButtonComponent, MouseAction, Component, GameComponent, Window};
 use crossterm::event::{
     read, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, MouseButton,
     MouseEvent, MouseEventKind,
@@ -8,17 +8,21 @@ use log::info;
 use std::io;
 use std::io::stdout;
 use crate::game_screen::GameType;
-use crate::screen::{ClickAction, Screen};
+use crate::MouseAction::{DownLeft, DownMiddle, DownRight, Drag, UpLeft, UpMiddle, UpRight};
+use crate::screen::{ClickAction, Point, Screen};
 use crate::screen::window::BorderStyle;
 
 struct State {
     screen: Screen,
+    last_left_click: Point
 }
 
 impl State {
     fn new() -> Self {
+        let (width, height) = terminal::size().expect("");
         let mut state = State {
-            screen: Screen::new(),
+            screen: Screen::new(width as i32, height as i32),
+            last_left_click: (0,0).into()
         };
         state.screen.add(Window::new(
             5,
@@ -27,6 +31,7 @@ impl State {
             Box::from(ButtonComponent::new(Box::from("Go"), 2, 1, ClickAction::Easy)),
             BorderStyle::Single,
             Box::default(),
+            false,
         )).expect("");
         return state;
     }
@@ -43,6 +48,7 @@ impl State {
                     Box::from(game),
                     BorderStyle::Double,
                     Box::from("Easy peasy"),
+                    false,
                 ))?;
                 let mut button = ButtonComponent::new(Box::from("Close"), 5, 1, ClickAction::None);
                 button.update_click_action(ClickAction::Close(vec!{button.get_id(), game_id}));
@@ -53,6 +59,7 @@ impl State {
                     Box::from(button),
                     BorderStyle::Dotted,
                     Box::default(),
+                    false,
                 ))?;
             }
             ClickAction::Medium => {}
@@ -72,23 +79,54 @@ impl State {
         &mut self,
         event: MouseEvent,
     ) -> Result<()> {
-        let x = event.column as usize;
-        let y = event.row as usize;
-        match event.kind {
-            MouseEventKind::Down(_) => info!("down! {}, {}", x, y),
-            MouseEventKind::Up(_) => info!("up! {}, {}", x, y),
-            MouseEventKind::Drag(_) => info!("drag! {}, {}", x, y),
-            MouseEventKind::Moved => info!("moved! {}, {}", x, y),
-            _ => {}
-        }
-        if let MouseEventKind::Down(button) = event.kind {
-            let click = match button {
-                MouseButton::Left => Click::Left((x,y).into()),
-                MouseButton::Right => Click::Right((x,y).into()),
-                MouseButton::Middle => Click::Middle((x,y).into())
-            };
-            let click_action = self.screen.handle_click(click)?;
+        let x = event.column as i32;
+        let mut y = event.row as i32;
+        let some_click = match event.kind {
+            MouseEventKind::Down(button) => {
+                info!("down! {}, {}, {:?}", x, y, button);
+                match button {
+                    MouseButton::Left => {
+                        let point = (x,y).into();
+                        self.last_left_click = point;
+                        Some(DownLeft(point))
+                    },
+                    MouseButton::Right => Some(DownRight((x, y).into())),
+                    MouseButton::Middle => Some(DownMiddle((x, y).into()))
+                }
+            },
+            MouseEventKind::Up(button) => {
+                info!("up! {}, {}, {:?}", x, y, button);
+                match button {
+                    MouseButton::Left => Some(UpLeft((x, y).into())),
+                    MouseButton::Right => Some(UpRight((x, y).into())),
+                    MouseButton::Middle => Some(UpMiddle((x, y).into()))
+                }
+            },
+            MouseEventKind::Drag(button) => {
+                match button {
+                    MouseButton::Left => {
+                        let (_, last_y) = self.last_left_click.into();
+                        if y == 0 && last_y != 1 {
+                            y = last_y;
+                        }
+                        let to = (x, y).into();
+                        let from = self.last_left_click;
+                        self.last_left_click = to;
+                        info!("drag! {:?}, {:?}", to, from);
+                        Some(Drag(from, to))
 
+                    },
+                    _ => None
+                }
+            },
+            MouseEventKind::Moved => {
+                info!("moved! {}, {}", x, y);
+                None
+            },
+            _ => None
+        };
+        if let Some(click) = some_click {
+            let click_action = self.screen.handle_click(click)?;
             self.handle_click_action(click_action)?;
         }
         Ok(())
@@ -100,11 +138,12 @@ impl State {
             self.screen.draw()?;
             match read()? {
                 Event::Mouse(event) => self.handle_mouse_click(event)?,
-                Event::Resize(width, height) => self.handle_resize(width, height)?,
+                Event::Resize(width, height) =>
+                    self.screen.change_size(width as i32, height as i32)?,
                 Event::Key(key) => match key.code {
                     KeyCode::Char(char) => {
                         if char == 'q' {
-                            quit_game()?;
+                            return Ok(());
                         }
                     }
                     _ => {}
@@ -112,10 +151,6 @@ impl State {
                 _ => {}
             }
         }
-    }
-
-    fn handle_resize(&mut self, _: u16, _: u16) -> Result<()> {
-        self.screen.refresh()
     }
 }
 

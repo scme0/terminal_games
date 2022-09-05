@@ -1,4 +1,4 @@
-use crate::{Click, Component, UpdateElement};
+use crate::{MouseAction, Component, UpdateElement};
 use crossterm::style::Color;
 use crossterm::Result;
 use uuid::Uuid;
@@ -8,14 +8,14 @@ use crate::screen::ClickAction;
 pub struct ButtonComponent {
     id: Uuid,
     label: Box<str>,
-    width: usize,
-    height: usize,
+    width: i32,
+    height: i32,
     changed: bool,
     pub click_action: ClickAction,
 }
 
 impl ButtonComponent {
-    pub fn new(label: Box<str>, width: usize, height: usize, click_action: ClickAction) -> Self {
+    pub fn new(label: Box<str>, width: i32, height: i32, click_action: ClickAction) -> Self {
         return ButtonComponent {
             id: Uuid::new_v4(),
             label,
@@ -35,7 +35,7 @@ impl Component for ButtonComponent {
         self.id
     }
 
-    fn get_size(&self) -> (usize, usize) {
+    fn get_size(&self) -> (i32, i32) {
         return (self.width, self.height);
     }
 
@@ -47,11 +47,10 @@ impl Component for ButtonComponent {
                 y = y / 2;
             }
             let mut x = 0;
-            let label_len = self.label.len();
+            let label_len = self.label.len() as i32;
             if self.width > label_len {
-                x = self.width / 2 - label_len / 2;
+                x = self.width / 2 as i32 - label_len / 2 as i32;
             }
-            let i = 0;
             for c in self.label.chars() {
                 updates.push(UpdateElement {
                     point: (x,y).into(),
@@ -67,9 +66,9 @@ impl Component for ButtonComponent {
         return Ok(updates);
     }
 
-    fn handle_click(&mut self, click: Click) -> Result<ClickAction> {
+    fn handle_click(&mut self, click: MouseAction) -> Result<ClickAction> {
         Ok(match click {
-            Click::Left(_) => self.click_action.clone(),
+            MouseAction::DownLeft(_) => self.click_action.clone(),
             _ => ClickAction::None
         })
     }

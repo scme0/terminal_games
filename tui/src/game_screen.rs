@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::{Click, Component, UpdateElement};
+use crate::{MouseAction, Component, UpdateElement};
 use crossterm::{style::Color, Result};
 use minesweeper_engine::{CanBeEngine, Cell, CellState, Engine, GameState, MoveType};
 use uuid::Uuid;
@@ -51,7 +51,7 @@ impl Component for GameComponent {
         self.id
     }
 
-    fn get_size(&self) -> (usize, usize) {
+    fn get_size(&self) -> (i32, i32) {
         let size = match &self.engine {
             None => (0, 0),
             Some(engine) => engine.get_size(),
@@ -96,12 +96,13 @@ impl Component for GameComponent {
         return Ok(updates);
     }
 
-    fn handle_click(&mut self, click: Click) -> Result<ClickAction> {
+    fn handle_click(&mut self, click: MouseAction) -> Result<ClickAction> {
         if let Some(engine) = &mut self.engine {
             let (move_type, (mut x, y)) = match click {
-                Click::Middle(p) => (Some(MoveType::Flag), p.into()),
-                Click::Right(p) => (Some(MoveType::Flag), p.into()),
-                Click::Left(p) => (Some(MoveType::Dig), p.into()),
+                MouseAction::DownMiddle(p) => (Some(MoveType::Flag), p.into()),
+                MouseAction::DownRight(p) => (Some(MoveType::Flag), p.into()),
+                MouseAction::DownLeft(p) => (Some(MoveType::Dig), p.into()),
+                _ => (None, (0,0))
             };
             if let Some(mov) = move_type {
                 if x % 2 == 1 {
@@ -127,7 +128,7 @@ impl TestEngine {
 }
 
 impl CanBeEngine for TestEngine {
-    fn get_size(&self) -> (usize, usize) {
+    fn get_size(&self) -> (i32, i32) {
         return (4,3);
     }
 

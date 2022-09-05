@@ -6,7 +6,7 @@ mod screen;
 use std::io;
 use crate::button::ButtonComponent;
 use crate::game_screen::GameComponent;
-use crate::screen::window::{Click, Component, UpdateElement, Window};
+use crate::screen::window::{MouseAction, Component, UpdateElement, Window};
 use crossterm::{ErrorKind, Result};
 use flexi_logger::{FileSpec, FlexiLoggerError, Logger};
 use log::{info};

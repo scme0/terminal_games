@@ -1,11 +1,12 @@
 pub mod window;
 
-use crate::{Click, Component};
+use crate::{MouseAction, Component};
 use crossterm::{cursor, queue, style::{self, Color, StyledContent, Stylize}, ErrorKind, Result, terminal};
 use log::info;
 use std::collections::{HashMap, HashSet};
 use std::io;
 use std::io::{stdout, Stdout, Write};
+use std::ops::Sub;
 use uuid::Uuid;
 use minesweeper_engine::CompleteState::Win;
 use window::Window;
@@ -24,51 +25,81 @@ pub enum ClickAction {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Point {
-    x: usize,
-    y: usize
+    x: i32,
+    y: i32
 }
 
-impl From<Point> for (usize, usize) {
-    fn from(c: Point) -> (usize, usize) {
+impl From<Point> for (i32, i32) {
+    fn from(c: Point) -> (i32, i32) {
         let Point {x, y} = c;
         return (x, y);
     }
 }
 
-impl From<(usize, usize)> for Point {
-    fn from(p: (usize, usize)) -> Self {
+impl Sub for Point {
+    type Output = Point;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Point {x: self.x - rhs.x, y: self.y - rhs.y}
+    }
+}
+
+// impl From<(usize, usize)> for Point {
+//     fn from(p: (usize, usize)) -> Self {
+//         Point {x: p.0, y: p.1 as}
+//     }
+// }
+
+impl From<(i32, i32)> for Point {
+    fn from(p: (i32, i32)) -> Self {
         Point {x: p.0, y: p.1}
     }
 }
 
-impl From<(i32, i32)> for Point {
-    fn from(p: (i32, i32)) -> Self {
-        Point {x: p.0 as usize, y: p.1 as usize}
-    }
-}
-
 pub struct Screen {
+    width: i32,
+    height: i32,
     windows: Vec<Window>,
     buffer: HashMap<Uuid, HashMap<Point, StyledContent<String>>>
 }
 
 impl Screen {
-    pub fn new() -> Self{
-        Screen {windows: vec![], buffer: HashMap::new()}
+    pub fn new(width: i32, height: i32) -> Self{
+        Screen {windows: vec![], buffer: HashMap::new(), width, height}
     }
 
     // Gets the top-most window for a specific point.
-    pub fn handle_click(&mut self, click: Click) -> Result<ClickAction> {
+    pub fn handle_click(&mut self, click: MouseAction) -> Result<ClickAction> {
         let (x,y) = click.to_point().into();
         for window in self.windows.iter_mut() {
-            info!("looking for window click hit: {}", window.id);
-            if x >= window.x && x < window.x + window.width &&
-                y >= window.y && y < window.y + window.height {
+            if x >= window.x && x < window.x + window.width + 1 &&
+                y >= window.y && y < window.y + window.height + 1 {
                 info!("got hit: {}", window.id);
-                return window.handle_click(click);
+                let mut p = click.to_point();
+                p.x -= window.x;
+                p.y -= window.y;
+                return window.handle_click(match click {
+                    MouseAction::DownMiddle(_) => MouseAction::DownMiddle(p),
+                    MouseAction::DownLeft(_) => MouseAction::DownLeft(p),
+                    MouseAction::DownRight(_) => MouseAction::DownRight(p),
+                    MouseAction::UpMiddle(_) => MouseAction::UpMiddle(p),
+                    MouseAction::UpLeft(_) => MouseAction::UpLeft(p),
+                    MouseAction::UpRight(_) => MouseAction::UpRight(p),
+                    MouseAction::Drag(_, mut to) => {
+                        to.x -= window.x;
+                        to.y -= window.y;
+                        MouseAction::Drag(p, to)
+                    }
+                });
             }
         }
         return Ok(ClickAction::None);
+    }
+
+    pub fn change_size(&mut self, width: i32, height: i32) -> Result<()>{
+        self.width = width;
+        self.height = height;
+        self.refresh()
     }
 
     // When no updates have happened but a window has been removed or the terminal has been resized.
@@ -93,6 +124,7 @@ impl Screen {
 
     // Draw specific updates for a window. If the update is behind another window, it will only be buffered.
     pub fn draw(&mut self) -> Result<()> {
+        let mut refresh = false;
         let mut point_map = HashSet::new();
         // ensure that windows below other windows do not draw over the top.
         // also draw border and title if set.
@@ -103,6 +135,11 @@ impl Screen {
                 Some(b) => b,
                 None => Err(ErrorKind::new(io::ErrorKind::Other, "Should always be Some here!"))?
             };
+
+            if window.refresh {
+                buffer.clear();
+                refresh = true;
+            }
 
             for update_element in window.get_updates()?.iter(){
                 if update_element.point.y > window.height || update_element.point.x > window.width {
@@ -129,6 +166,10 @@ impl Screen {
         }
         queue!(stdout,cursor::Hide)?;
         stdout.flush()?;
+
+        if refresh {
+            self.refresh()?;
+        }
         Ok(())
     }
 
@@ -168,7 +209,7 @@ impl Screen {
             return Ok(());
         }
         for (i,c) in value.content().chars().enumerate() {
-            let current_point = Point {x: point.x + i, y: point.y};
+            let current_point = Point {x: point.x + i as i32, y: point.y};
             if !point_map.contains(&current_point) {
                 point_map.insert(current_point);
                 let styled_char = StyledContent::new(value.style().clone(), c.to_string());

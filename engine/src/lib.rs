@@ -9,7 +9,7 @@ use queues::{IsQueue, Queue, queue};
 use crate::AdjacentBombs::{Eight, Five, Four, One, Seven, Six, Three, Two, Zero};
 
 pub trait CanBeEngine {
-    fn get_size(&self) -> (usize, usize);
+    fn get_size(&self) -> (i32, i32);
     fn get_board_state(&self) -> (GameState, HashMap<Cell,CellState>);
     fn play_move(&mut self, move_type: MoveType, cell: Cell) -> Result<()>;
     fn make_clone(&self) -> Box<dyn CanBeEngine>;
@@ -17,12 +17,12 @@ pub trait CanBeEngine {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Cell {
-    pub x: usize,
-    pub y: usize
+    pub x: i32,
+    pub y: i32
 }
 
-impl From<Cell> for (usize, usize) {
-    fn from(c: Cell) -> (usize, usize) {
+impl From<Cell> for (i32, i32) {
+    fn from(c: Cell) -> (i32, i32) {
         let Cell {x, y} = c;
         return (x, y);
     }
@@ -86,12 +86,12 @@ pub struct Engine {
     board_play_state: HashMap<Cell,CellState>,
     board_state: HashMap<Cell,CellState>,
     board_initialised: bool,
-    width: usize,
-    height: usize,
-    bomb_count: usize,
-    checked_cells: usize,
-    flagged_cells: usize,
-    total_cells: usize,
+    width: i32,
+    height: i32,
+    bomb_count: i32,
+    checked_cells: i32,
+    flagged_cells: i32,
+    total_cells: i32,
 }
 
 #[derive(Debug, Clone)]
@@ -101,7 +101,7 @@ pub enum MoveType {
 }
 
 impl Engine {
-    pub fn new(width: usize, height: usize, bomb_count: usize) -> Self {
+    pub fn new(width: i32, height: i32, bomb_count: i32) -> Self {
         let total_cells = width * height;
         let mut board_play_state = HashMap::new();
         let mut board_state = HashMap::new();
@@ -200,19 +200,19 @@ impl Engine {
     fn get_surrounding_cells(&mut self, cell: Cell, func: Option<fn (engine: &mut Engine,cell: Cell)>) -> Vec<Cell> {
         let (x, y) = cell.into();
         let mut cells = vec![];
-        for x_s in (x as i32 - 1)..(x as i32 + 2) {
-            if x_s < 0 || x_s >= self.width as i32 {
+        for x_s in (x - 1)..(x + 2) {
+            if x_s < 0 || x_s >= self.width {
                 continue;
             }
-            for y_s in (y as i32 - 1)..(y as i32 + 2) {
-                if y_s < 0 || y_s >= self.height as i32 {
+            for y_s in (y - 1)..(y + 2) {
+                if y_s < 0 || y_s >= self.height {
                     continue;
                 }
-                if y_s == y as i32 && x_s == x as i32 {
+                if y_s == y && x_s == x {
                     continue;
                 }
 
-                let cell = Cell {x: x_s as usize, y: y_s as usize};
+                let cell = Cell {x: x_s, y: y_s};
                 if let Some(f) = func {
                     f(self, cell);
                 }
@@ -225,7 +225,7 @@ impl Engine {
 }
 
 impl CanBeEngine for Engine {
-    fn get_size(&self) -> (usize, usize) {
+    fn get_size(&self) -> (i32, i32) {
         (self.width, self.height)
     }
 
