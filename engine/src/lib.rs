@@ -1,16 +1,19 @@
 use std::collections::{HashMap, HashSet};
-use crate::CellState::{Bomb, Checked, Flagged, Unchecked};
+use crate::CellState::{Bomb, Checked, Cross, Exploded, Flagged, Unchecked};
 use crate::CompleteState::{Lose, Win};
 use crate::GameState::{Complete, Playing};
 use crossterm::{ErrorKind, Result};
 use rand::Rng;
 use std::io;
+use std::time::Instant;
+use log::info;
 use queues::{IsQueue, Queue, queue};
 use crate::AdjacentBombs::{Eight, Five, Four, One, Seven, Six, Three, Two, Zero};
+use crate::MoveType::Flag;
 
 pub trait CanBeEngine {
     fn get_size(&self) -> (i32, i32);
-    fn get_board_state(&self) -> (GameState, HashMap<Cell,CellState>);
+    fn get_board_state(&self) -> (GameStats, HashMap<Cell,CellState>);
     fn play_move(&mut self, move_type: MoveType, cell: Cell) -> Result<()>;
     fn make_clone(&self) -> Box<dyn CanBeEngine>;
 }
@@ -65,6 +68,8 @@ pub enum CellState {
     Checked(AdjacentBombs),
     Flagged,
     Bomb,
+    Cross,
+    Exploded
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -80,6 +85,12 @@ pub enum GameState {
     Complete(CompleteState),
 }
 
+pub struct GameStats {
+    pub game_state: GameState,
+    pub flags_remaining: i32,
+    pub game_run_time: u64,
+}
+
 #[derive(Debug, Clone)]
 pub struct Engine {
     game_state: GameState,
@@ -92,6 +103,8 @@ pub struct Engine {
     checked_cells: i32,
     flagged_cells: i32,
     total_cells: i32,
+    start_instant: Option<Instant>,
+    game_complete_time: u64
 }
 
 #[derive(Debug, Clone)]
@@ -121,7 +134,41 @@ impl Engine {
             checked_cells: 0,
             flagged_cells: 0,
             total_cells,
-            board_initialised: false
+            board_initialised: false,
+            start_instant: None,
+            game_complete_time: 0,
+        }
+    }
+
+    pub(crate) fn win_game(&mut self) {
+        if let Some(start_instant) = self.start_instant{
+            self.game_complete_time = start_instant.elapsed().as_secs();
+        }
+        self.game_state = Complete(Win);
+    }
+
+    pub(crate) fn lose_game(&mut self) {
+        if let Some(start_instant) = self.start_instant{
+            self.game_complete_time = start_instant.elapsed().as_secs();
+        }
+        self.game_state = Complete(Lose);
+        for x in 0..self.width {
+            for y in 0..self.height {
+                let cell = Cell{x,y};
+                if let Some(cell_state) = self.board_state.get(&cell) {
+                    if let Some(p_cell_state) = self.board_play_state.get(&cell) {
+                        if *cell_state == Bomb {
+                            if *p_cell_state != Flagged && *p_cell_state != Exploded {
+                                self.board_play_state.insert(cell, Bomb);
+                            }
+                        } else {
+                            if *p_cell_state == Flagged {
+                                self.board_play_state.insert(cell, Cross);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -185,13 +232,17 @@ impl Engine {
                 continue;
             }
             visited_cells.insert(cell);
+
             if let Checked(bombs) = self.board_state[&cell] {
                 if bombs == Zero {
                     for surrounding_cell in self.get_surrounding_cells(cell, None) {
                         cell_queue.add(surrounding_cell).expect("");
                     }
                 }
-                self.board_play_state.insert(cell, self.board_state[&cell]);
+                if self.board_play_state[&cell] == Unchecked {
+                    self.board_play_state.insert(cell, self.board_state[&cell]);
+                    self.checked_cells += 1;
+                }
             }
         }
         Ok(())
@@ -229,11 +280,22 @@ impl CanBeEngine for Engine {
         (self.width, self.height)
     }
 
-    fn get_board_state(&self) -> (GameState, HashMap<Cell,CellState>) {
-        (self.game_state, self.board_play_state.clone())
+    fn get_board_state(&self) -> (GameStats, HashMap<Cell,CellState>) {
+        let game_time = match self.game_state {
+            Complete(_) => self.game_complete_time,
+            _ => match self.start_instant{
+                None => 0,
+                Some(instant) => instant.elapsed().as_secs()
+            }
+        };
+        (GameStats {game_state: self.game_state, flags_remaining: self.bomb_count - self.flagged_cells, game_run_time: game_time}, self.board_play_state.clone())
     }
 
     fn play_move(&mut self, move_type: MoveType, cell: Cell) -> Result<()> {
+        if let Complete(_) = self.game_state {
+            return Ok(());
+        }
+
         if cell.x > self.width || cell.y > self.height {
             Err(ErrorKind::new(
                 io::ErrorKind::Other,
@@ -246,6 +308,7 @@ impl CanBeEngine for Engine {
         }
 
         if !self.board_initialised {
+            self.start_instant = Some(Instant::now());
             self.initialise_board(cell)?;
         }
 
@@ -254,14 +317,17 @@ impl CanBeEngine for Engine {
                 Unchecked => {
                     self.board_play_state.insert(cell,self.board_state[&cell]);
                     match self.board_play_state[&cell] {
-                        Bomb => self.game_state = Complete(Lose),
+                        Bomb => {
+                            self.board_play_state.insert(cell, Exploded);
+                            self.lose_game();
+                        },
                         Checked(bombs) => {
                             if bombs == Zero {
                                 self.reveal_safe_patch(cell).expect("");
                             }
                             self.checked_cells += 1;
                             if self.checked_cells + self.flagged_cells == self.total_cells {
-                                self.game_state = Complete(Win);
+                                self.win_game();
                             } else {
                                 self.game_state = Playing;
                             }
@@ -275,10 +341,15 @@ impl CanBeEngine for Engine {
                 }
                 _ => {}
             },
-            MoveType::Flag => match self.board_play_state[&cell] {
+            Flag => match self.board_play_state[&cell] {
                 Unchecked => {
                     self.board_play_state.insert(cell,Flagged);
                     self.flagged_cells += 1;
+                    if self.checked_cells + self.flagged_cells == self.total_cells {
+                        self.win_game();
+                    } else {
+                        self.game_state = Playing;
+                    }
                 }
                 Flagged => {
                     self.board_play_state.insert(cell,Unchecked);
@@ -287,6 +358,7 @@ impl CanBeEngine for Engine {
                 _ => {}
             },
         }
+        info!("state: {:?}, flagged: {}, checked: {}", self.game_state, self.flagged_cells, self.checked_cells);
         Ok(())
     }
 
@@ -294,14 +366,3 @@ impl CanBeEngine for Engine {
         Box::from(Engine::new(self.width, self.height, self.bomb_count))
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//
-//     #[test]
-//     fn it_works() {
-//         let result = add(2, 2);
-//         assert_eq!(result, 4);
-//     }
-// }

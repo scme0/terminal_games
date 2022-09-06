@@ -1,12 +1,10 @@
 use crate::{ButtonComponent, MouseAction, Component, GameComponent, Window};
-use crossterm::event::{
-    read, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, MouseButton,
-    MouseEvent, MouseEventKind,
-};
+use crossterm::event::{read, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, MouseButton, MouseEvent, MouseEventKind, poll};
 use crossterm::{execute, terminal, ErrorKind, Result};
 use log::info;
 use std::io;
 use std::io::stdout;
+use std::time::Duration;
 use crate::game_screen::GameType;
 use crate::MouseAction::{DownLeft, DownMiddle, DownRight, Drag, UpLeft, UpMiddle, UpRight};
 use crate::screen::{ClickAction, Point, Screen};
@@ -168,19 +166,23 @@ impl State {
         // Start game loop.
         loop {
             self.screen.draw()?;
-            match read()? {
-                Event::Mouse(event) => self.handle_mouse_click(event)?,
-                Event::Resize(width, height) =>
-                    self.screen.change_size(width as i32, height as i32)?,
-                Event::Key(key) => match key.code {
-                    KeyCode::Char(char) => {
-                        if char == 'q' {
-                            return Ok(());
-                        }
+            if let Ok(ready) = poll(Duration::from_millis(30)) {
+                if ready {
+                    match read()? {
+                        Event::Mouse(event) => self.handle_mouse_click(event)?,
+                        Event::Resize(width, height) =>
+                            self.screen.change_size(width as i32, height as i32)?,
+                        Event::Key(key) => match key.code {
+                            KeyCode::Char(char) => {
+                                if char == 'q' {
+                                    return Ok(());
+                                }
+                            }
+                            _ => {}
+                        },
+                        _ => {}
                     }
-                    _ => {}
-                },
-                _ => {}
+                }
             }
         }
     }

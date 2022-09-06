@@ -26,8 +26,8 @@ pub enum ClickAction {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Point {
-    x: i32,
-    y: i32
+    pub x: i32,
+    pub y: i32
 }
 
 impl From<Point> for (i32, i32) {

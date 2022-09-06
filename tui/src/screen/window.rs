@@ -261,7 +261,7 @@ impl Component for Window {
     }
 
     fn handle_click(&mut self, mouse_action: MouseAction) -> Result<ClickAction> {
-        info!("A mouse action! {:?}", mouse_action);
+        // info!("A mouse action! {:?}", mouse_action);
         let action_point = mouse_action.to_point();
         if self.border_style != BorderStyle::None &&
             (action_point.x == 0 || action_point.x == 1 || action_point.x == self.width - 1 || action_point.x == self.width - 2
