@@ -5,7 +5,7 @@ use std::fmt::{Debug, Display, Formatter};
 use crossterm::event::Event::Mouse;
 use log::info;
 use uuid::Uuid;
-use crate::screen::{ClickAction, Point};
+use crate::screen::{ClickAction, Dimension, Point};
 use crate::screen::ClickAction::Close;
 
 #[derive(Debug, Copy, Clone)]
@@ -89,7 +89,7 @@ pub trait Component {
     fn get_id(&self) -> Uuid;
     fn get_size(&self) -> (i32, i32);
     fn get_updates(&mut self) -> Result<Vec<UpdateElement>>;
-    fn handle_click(&mut self, click: MouseAction) -> Result<ClickAction>;
+    fn handle_click(&mut self, click: MouseAction) -> Result<Vec<ClickAction>>;
 }
 
 impl Debug for dyn Component {
@@ -102,10 +102,8 @@ impl Debug for dyn Component {
 pub struct Window {
     pub id: Uuid,
     pub z: i32,
-    pub x: i32,
-    pub y: i32,
-    pub width: i32,
-    pub height: i32,
+    pub location: Point,
+    pub size: Dimension,
     border_style: BorderStyle,
     border_title: Box<str>,
     component: Box<dyn Component>,
@@ -116,8 +114,7 @@ pub struct Window {
 
 impl Window {
     pub fn new(
-        x: i32,
-        y: i32,
+        location: Point,
         z: i32,
         component: Box<dyn Component>,
         border_style: BorderStyle,
@@ -139,11 +136,9 @@ impl Window {
 
         return Window {
             id,
-            x,
-            y,
+            location,
             z,
-            width,
-            height,
+            size: (width, height).into(),
             border_style,
             border_title,
             component,
@@ -158,17 +153,17 @@ impl Window {
         let mut updates = vec![];
         let mut title = self.border_title.clone();
         let mut title_len = title.chars().count() as i32;
-        if title_len >= self.width {
-            title = Box::from(&title[..(self.width - 2) as usize]);
-            title_len = self.width - 1;
+        if title_len >= self.size.width {
+            title = Box::from(&title[..(self.size.width - 2) as usize]);
+            title_len = self.size.width - 1;
         }
         let top_left:Point = (0, 0).into();
         let b_top_left = top_left + (1,0).into();
-        let top_right:Point = (self.width, 0).into();
+        let top_right:Point = (self.size.width, 0).into();
         let b_top_right = top_right + (-2,0).into();
-        let bottom_left:Point = (0, self.height).into();
+        let bottom_left:Point = (0, self.size.height).into();
         let b_bottom_left = bottom_left + (1,0).into();
-        let bottom_right:Point = (self.width, self.height).into();
+        let bottom_right:Point = (self.size.width, self.size.height).into();
         let b_bottom_right = bottom_right + (-2,0).into();
         for y in top_left.y..bottom_left.y+1 {
             updates.push(UpdateElement {point: (top_left.x, y).into(), value: ' ', fg: None});
@@ -260,26 +255,26 @@ impl Component for Window {
         return Ok(updates);
     }
 
-    fn handle_click(&mut self, mouse_action: MouseAction) -> Result<ClickAction> {
+    fn handle_click(&mut self, mouse_action: MouseAction) -> Result<Vec<ClickAction>> {
         // info!("A mouse action! {:?}", mouse_action);
         let action_point = mouse_action.to_point();
         if self.border_style != BorderStyle::None &&
-            (action_point.x == 0 || action_point.x == 1 || action_point.x == self.width - 1 || action_point.x == self.width - 2
-                || action_point.y == 0 || action_point.y == self.height){
+            (action_point.x == 0 || action_point.x == 1 || action_point.x == self.size.width - 1 || action_point.x == self.size.width - 2
+                || action_point.y == 0 || action_point.y == self.size.height){
             match mouse_action {
                 MouseAction::DownLeft(_) => {
                     if let Some(close_point) = self.close_point {
                         if action_point == close_point || action_point == close_point + (1,0).into() {
-                            return Ok(Close(vec![self.get_id()]))
+                            return Ok(vec![Close(self.get_id())])
                         }
                     }
                 }
                 MouseAction::Drag(starting_point, drag_point) => {
                     if self.can_move {
-                        let movement_vector = starting_point - drag_point;
+                        let movement_vector = drag_point - starting_point;
                         // info!("Dragging: {:?}, {:?}, {:?}", starting_point, drag_point, movement_vector);
-                        let mut new_x = self.x - movement_vector.x;
-                        let mut new_y = self.y - movement_vector.y;
+                        let mut new_x = self.location.x + movement_vector.x;
+                        let mut new_y = self.location.y + movement_vector.y;
                         if new_x < 0 {
                             new_x = 0;
                         }
@@ -288,14 +283,14 @@ impl Component for Window {
                             new_y = 0;
                         }
 
-                        if self.x != new_x || self.y != new_y {
-                            self.x = new_x;
-                            self.y = new_y;
+                        if self.location.x != new_x || self.location.y != new_y {
+                            self.location.x = new_x;
+                            self.location.y = new_y;
                             self.refresh = true;
                             // info!("moved window: {}, {}", self.x, self.y);
                         }
                     }
-                    return Ok(ClickAction::None);
+                    return Ok(vec![]);
                 }
                 _ => {}
             }
@@ -306,10 +301,10 @@ impl Component for Window {
                 MouseAction::DownMiddle(_) => self.component.handle_click(MouseAction::DownMiddle(rel_point)),
                 MouseAction::DownLeft(_) => self.component.handle_click(MouseAction::DownLeft(rel_point)),
                 MouseAction::DownRight(_) => self.component.handle_click(MouseAction::DownRight(rel_point)),
-                _ => Ok(ClickAction::None)
+                _ => Ok(vec![])
             };
         }
-        Ok(ClickAction::None)
+        Ok(vec![])
     }
 }
 

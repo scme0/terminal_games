@@ -159,7 +159,7 @@ impl Component for GameComponent {
         Ok(updates)
     }
 
-    fn handle_click(&mut self, click: MouseAction) -> Result<ClickAction> {
+    fn handle_click(&mut self, click: MouseAction) -> Result<Vec<ClickAction>> {
         let (move_type, (mut x, mut y)) = match click {
             MouseAction::DownMiddle(p) => (Some(MoveType::Flag), p.into()),
             MouseAction::DownRight(p) => (Some(MoveType::Flag), p.into()),
@@ -177,7 +177,7 @@ impl Component for GameComponent {
                 self.engine.play_move(mov, Cell {x, y})?;
             }
         }
-        Ok(ClickAction::None)
+        Ok(vec![])
     }
 }
 

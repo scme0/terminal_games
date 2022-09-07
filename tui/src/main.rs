@@ -12,7 +12,6 @@ use flexi_logger::{FileSpec, FlexiLoggerError, Logger};
 use log::{info};
 
 fn main() -> Result<()> {
-    // TODO: Figure out what "expect" is and what it does.
     let logger_result = Logger::try_with_str("info");
     match logger_result {
         Ok(logger) => {

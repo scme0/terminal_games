@@ -10,6 +10,12 @@ use crate::MouseAction::{DownLeft, DownMiddle, DownRight, Drag, UpLeft, UpMiddle
 use crate::screen::{ClickAction, Point, Screen};
 use crate::screen::window::BorderStyle;
 
+#[derive(PartialEq)]
+enum GameRunState {
+    KeepRunning,
+    Close
+}
+
 struct State {
     screen: Screen,
     last_left_click: Point
@@ -23,30 +29,27 @@ impl State {
             last_left_click: (0,0).into()
         };
         state.screen.add(Window::new(
-            10,
-            5,
+            (10, 5).into(),
             99,
-            Box::from(ButtonComponent::new(Box::from("Easy"), 6, 1, ClickAction::Easy)),
+            Box::from(ButtonComponent::new(Box::from("Easy"), (6, 1).into(), ClickAction::Easy)),
             BorderStyle::Single,
             Box::default(),
             false,
             false
         )).expect("");
         state.screen.add(Window::new(
-            20,
-            5,
+            (20, 5).into(),
             98,
-            Box::from(ButtonComponent::new(Box::from("Medium"), 6, 1, ClickAction::Medium)),
+            Box::from(ButtonComponent::new(Box::from("Medium"), (6, 1).into(), ClickAction::Medium)),
             BorderStyle::Single,
             Box::default(),
             false,
             false
         )).expect("");
         state.screen.add(Window::new(
-            30,
-            5,
+            (30, 5).into(),
             97,
-            Box::from(ButtonComponent::new(Box::from("Hard"), 6, 1, ClickAction::Hard)),
+            Box::from(ButtonComponent::new(Box::from("Hard"), (6, 1).into(), ClickAction::Hard)),
             BorderStyle::Single,
             Box::default(),
             false,
@@ -56,59 +59,61 @@ impl State {
         return state;
     }
 
-    fn handle_click_action(&mut self, click_action: ClickAction) -> Result<()>{
-        match click_action {
-            ClickAction::Easy => {
-                self.screen.add(Window::new(
-                    5,
-                    10,
-                    0,
-                    Box::from(GameComponent::new(GameType::Easy)),
-                    BorderStyle::Double,
-                    Box::from("Easy peasy"),
-                    true,
-                    true
-                ))?;
+    fn handle_click_actions(&mut self, click_actions: Vec<ClickAction>) -> Result<GameRunState>{
+        let mut windows_to_remove = vec![];
+        for action in click_actions {
+            match action {
+                ClickAction::Easy => {
+                    self.screen.add(Window::new(
+                        (5, 10).into(),
+                        0,
+                        Box::from(GameComponent::new(GameType::Easy)),
+                        BorderStyle::Double,
+                        Box::from("Easy peasy"),
+                        true,
+                        true
+                    ))?;
+                }
+                ClickAction::Medium => {
+                    self.screen.add(Window::new(
+                        (5, 10).into(),
+                        0,
+                        Box::from(GameComponent::new(GameType::Medium)),
+                        BorderStyle::Double,
+                        Box::from("Medium meh"),
+                        true,
+                        true
+                    ))?;
+                }
+                ClickAction::Hard => {
+                    self.screen.add(Window::new(
+                        (5, 10).into(),
+                        0,
+                        Box::from(GameComponent::new(GameType::Hard)),
+                        BorderStyle::Double,
+                        Box::from("Hard shmard"),
+                        true,
+                        true
+                    ))?;
+                }
+                ClickAction::Quit => {
+                    return Ok(GameRunState::Close);
+                }
+                ClickAction::Close(window_id) => {
+                    windows_to_remove.push(window_id);
+                }
             }
-            ClickAction::Medium => {
-                self.screen.add(Window::new(
-                    5,
-                    10,
-                    0,
-                    Box::from(GameComponent::new(GameType::Medium)),
-                    BorderStyle::Double,
-                    Box::from("Medium meh"),
-                    true,
-                    true
-                ))?;
-            }
-            ClickAction::Hard => {
-                self.screen.add(Window::new(
-                    5,
-                    10,
-                    0,
-                    Box::from(GameComponent::new(GameType::Hard)),
-                    BorderStyle::Double,
-                    Box::from("Hard shmard"),
-                    true,
-                    true
-                ))?;
-            }
-            ClickAction::Quit => {}
-            ClickAction::Home => {}
-            ClickAction::Retry => {}
-            ClickAction::Close(window_ids) => {
-                self.screen.remove_all(window_ids)?;
-            }
-            _ => {}
         }
-        Ok(())
+        if !windows_to_remove.is_empty() {
+            self.screen.remove_all(windows_to_remove)?;
+        }
+        Ok(GameRunState::KeepRunning)
     }
 
     fn handle_mouse_click(
         &mut self,
         event: MouseEvent,
-    ) -> Result<()> {
+    ) -> Result<GameRunState> {
         let x = event.column as i32;
         let mut y = event.row as i32;
         let some_click = match event.kind {
@@ -157,9 +162,9 @@ impl State {
         };
         if let Some(click) = some_click {
             let click_action = self.screen.handle_click(click)?;
-            self.handle_click_action(click_action)?;
+            return self.handle_click_actions(click_action);
         }
-        Ok(())
+        Ok(GameRunState::KeepRunning)
     }
 
     fn game_loop(&mut self) -> Result<()> {
@@ -169,7 +174,11 @@ impl State {
             if let Ok(ready) = poll(Duration::from_millis(30)) {
                 if ready {
                     match read()? {
-                        Event::Mouse(event) => self.handle_mouse_click(event)?,
+                        Event::Mouse(event) => {
+                            if self.handle_mouse_click(event)? == GameRunState::Close {
+                                return Ok(());
+                            }
+                        },
                         Event::Resize(width, height) =>
                             self.screen.change_size(width as i32, height as i32)?,
                         Event::Key(key) => match key.code {
@@ -201,8 +210,4 @@ pub fn start() -> Result<()> {
     terminal::disable_raw_mode()?;
 
     return result;
-}
-
-fn quit_game() -> Result<()> {
-    Err(ErrorKind::new(io::ErrorKind::Interrupted, "Program exit"))
 }

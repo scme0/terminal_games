@@ -8,20 +8,38 @@ use std::collections::{HashMap, HashSet};
 use std::io;
 use std::io::{stdout, Stdout, Write};
 use std::ops::{Add, Sub};
+use crossterm::style::ContentStyle;
+use crossterm::terminal::ClearType;
 use uuid::Uuid;
 use minesweeper_engine::CompleteState::Win;
 use window::Window;
 
 #[derive(Debug, Clone)]
 pub enum ClickAction {
-    None,
     Easy,
     Medium,
     Hard,
     Quit,
-    Home,
-    Retry,
-    Close(Vec<Uuid>)
+    Close(Uuid),
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Dimension {
+    pub width: i32,
+    pub height: i32
+}
+
+impl From<Dimension> for (i32, i32) {
+    fn from(c: Dimension) -> (i32, i32) {
+        let Dimension {width, height} = c;
+        return (width, height);
+    }
+}
+
+impl From<(i32, i32)> for Dimension {
+    fn from(p: (i32, i32)) -> Self {
+        Dimension {width: p.0, height: p.1}
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -78,18 +96,18 @@ impl Screen {
     }
 
     // Gets the top-most window for a specific point.
-    pub fn handle_click(&mut self, click: MouseAction) -> Result<ClickAction> {
+    pub fn handle_click(&mut self, click: MouseAction) -> Result<Vec<ClickAction>> {
         let (x,y) = click.to_point().into();
         let some_window = self.windows.iter_mut().enumerate().find(|(i,w)| {
-            return x >= w.x && x < w.x + w.width + 1 &&
-                y >= w.y && y < w.y + w.height + 1;
+            return x >= w.location.x && x < w.location.x + w.size.width + 1 &&
+                y >= w.location.y && y < w.location.y + w.size.height + 1;
         });
         if let Some((idx, window)) = some_window {
             // info!("got hit: {}", window.id);
             if !window.can_move || window.z == 0 {
                 let mut p = click.to_point();
-                p.x -= window.x;
-                p.y -= window.y;
+                p.x -= window.location.x;
+                p.y -= window.location.y;
                 return window.handle_click(match click {
                     MouseAction::DownMiddle(_) => MouseAction::DownMiddle(p),
                     MouseAction::DownLeft(_) => MouseAction::DownLeft(p),
@@ -98,15 +116,15 @@ impl Screen {
                     MouseAction::UpLeft(_) => MouseAction::UpLeft(p),
                     MouseAction::UpRight(_) => MouseAction::UpRight(p),
                     MouseAction::Drag(_, mut to) => {
-                        to.x -= window.x;
-                        to.y -= window.y;
+                        to.x -= window.location.x;
+                        to.y -= window.location.y;
                         MouseAction::Drag(p, to)
                     }
                 });
             } else {
-                info!("Here!: {:?}", click);
+                //info!("Here!: {:?}", click);
                 if let MouseAction::DownLeft(_) = click {
-                    info!("will do stuff after here...");
+                    //info!("will do stuff after here...");
                     //info!("will shuffle: {:?}", self.windows.iter().map(|w| (w.z, w.id)));
                     self.shuffle_windows_back_from_z(0, 0);
                     //info!("shuffled: {:?}", self.windows.iter().map(|w| (w.z, w.id)));
@@ -124,10 +142,10 @@ impl Screen {
                     //info!("sorted: {:?}", self.windows.iter().map(|w| (w.z, w.id)));
                     self.refresh()?;
                 }
-                info!("After Here!...");
+                // info!("After Here!...");
             }
         }
-        return Ok(ClickAction::None);
+        return Ok(vec![]);
     }
 
     pub fn change_size(&mut self, width: i32, height: i32) -> Result<()>{
@@ -176,7 +194,7 @@ impl Screen {
             }
 
             for update_element in window.get_updates()?.iter(){
-                if update_element.point.y > window.height || update_element.point.x > window.width {
+                if update_element.point.y > window.size.height || update_element.point.x > window.size.width {
                     continue;
                 }
                 let mut value = update_element
@@ -186,18 +204,19 @@ impl Screen {
                 if let Some(fg) = update_element.fg {
                     value = value.with(fg);
                 }
-                let absolute_x = window.x + update_element.point.x;
-                let absolute_y = window.y + update_element.point.y;
+                let absolute_x = window.location.x + update_element.point.x;
+                let absolute_y = window.location.y + update_element.point.y;
 
-                buffer.insert((absolute_x, absolute_y).into(), value.clone());
-
-                Screen::draw_value(&mut stdout,&mut point_map, Point {x: absolute_x, y: absolute_y}, value)?;
+                let point = (absolute_x, absolute_y).into();
+                buffer.insert(point, value.clone());
+                Screen::draw_value(&mut stdout,&mut point_map, point, value)?;
             }
 
             for (key, _) in buffer {
                 point_map.insert(*key);
             }
         }
+
         queue!(stdout,cursor::Hide)?;
         stdout.flush()?;
 
@@ -216,8 +235,11 @@ impl Screen {
                 self.shuffle_windows_back_from_z(i, window.z);
                 self.windows.insert(i, window);
             },
-            Err(i) => self.windows.insert(i, window)
+            Err(i) => {
+                self.windows.insert(i, window);
+            }
         }
+
         self.buffer.insert(window_id, HashMap::new());
         self.refresh()?;
         Ok(())
