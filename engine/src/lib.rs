@@ -204,6 +204,9 @@ impl Engine {
             return Ok(());
         }
 
+        let mut safe_cells = self.get_surrounding_cells(clicked_cell, None);
+        safe_cells.push(clicked_cell);
+
         let mut rng = rand::thread_rng();
         let bomb_probability = self.bomb_count as f64 / self.total_cells as f64;
         let mut get_bomb_or_not = || rng.gen_range(0.0..1.0) <= bomb_probability;
@@ -212,8 +215,8 @@ impl Engine {
             for x in 0..self.width {
                 for y in 0..self.height {
                     let cell = Cell {x, y};
-                    // Ensure no bomb is placed on the clicked cell!
-                    if  clicked_cell == cell {
+                    // Ensure no bomb is placed on or around the clicked cell!
+                    if  safe_cells.contains(&cell) {
                         continue;
                     }
 
