@@ -112,6 +112,7 @@ impl Screen {
                     MouseAction::DownMiddle(_) => MouseAction::DownMiddle(p),
                     MouseAction::DownLeft(_) => MouseAction::DownLeft(p),
                     MouseAction::DownRight(_) => MouseAction::DownRight(p),
+                    MouseAction::DoubleLeft(_) => MouseAction::DoubleLeft(p),
                     MouseAction::UpMiddle(_) => MouseAction::UpMiddle(p),
                     MouseAction::UpLeft(_) => MouseAction::UpLeft(p),
                     MouseAction::UpRight(_) => MouseAction::UpRight(p),

@@ -9,7 +9,7 @@ use std::time::Instant;
 use log::info;
 use queues::{IsQueue, Queue, queue};
 use crate::AdjacentBombs::{Eight, Five, Four, One, Seven, Six, Three, Two, Zero};
-use crate::MoveType::Flag;
+use crate::MoveType::{Flag, Dig, DigAround};
 
 pub trait CanBeEngine {
     fn get_size(&self) -> (i32, i32);
@@ -60,6 +60,20 @@ impl AdjacentBombs {
         };
         Ok(bombs)
     }
+
+    pub fn to_usize(&self) -> usize {
+        match self {
+            Zero => 0,
+            One => 1,
+            Two => 2,
+            Three => 3,
+            Four => 4,
+            Five => 5,
+            Six => 6,
+            Seven => 7,
+            Eight => 8
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -109,6 +123,7 @@ pub struct Engine {
 
 #[derive(Debug, Clone)]
 pub enum MoveType {
+    DigAround,
     Dig,
     Flag,
 }
@@ -273,6 +288,70 @@ impl Engine {
         }
         return cells;
     }
+
+    fn dig_around_cell(&mut self, cell: Cell) {
+        if let Checked(adjacentBombs) = self.board_play_state[&cell] {
+            let surrounding_cells = self.get_surrounding_cells(cell, None);
+            let num_flagged_surrounding_cells = surrounding_cells.iter().filter(|c|self.board_play_state[c] == Flagged).count();
+            if adjacentBombs.to_usize() == num_flagged_surrounding_cells {
+                for c in surrounding_cells {
+                    self.dig_cell(c, false);
+                }
+            }
+        }
+    }
+
+    fn flag_cell(&mut self, cell: Cell) {
+        match self.board_play_state[&cell] {
+            Unchecked => {
+                self.board_play_state.insert(cell,Flagged);
+                self.flagged_cells += 1;
+                if self.checked_cells + self.flagged_cells == self.total_cells {
+                    self.win_game();
+                } else {
+                    self.game_state = Playing;
+                }
+            }
+            Flagged => {
+                self.board_play_state.insert(cell,Unchecked);
+                self.flagged_cells -= 1;
+            }
+            _ => {}
+        }
+    }
+
+    fn dig_cell(&mut self, cell: Cell, alsoUnFlag: bool) {
+        match self.board_play_state[&cell] {
+            Unchecked => {
+                self.board_play_state.insert(cell, self.board_state[&cell]);
+                match self.board_play_state[&cell] {
+                    Bomb => {
+                        self.board_play_state.insert(cell, Exploded);
+                        self.lose_game();
+                    },
+                    Checked(bombs) => {
+                        if bombs == Zero {
+                            self.reveal_safe_patch(cell).expect("");
+                        }
+                        self.checked_cells += 1;
+                        if self.checked_cells + self.flagged_cells == self.total_cells {
+                            self.win_game();
+                        } else {
+                            self.game_state = Playing;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            Flagged => {
+                if alsoUnFlag {
+                    self.board_play_state.insert(cell, Unchecked);
+                    self.flagged_cells -= 1;
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 impl CanBeEngine for Engine {
@@ -313,50 +392,16 @@ impl CanBeEngine for Engine {
         }
 
         match move_type {
-            MoveType::Dig => match self.board_play_state[&cell] {
-                Unchecked => {
-                    self.board_play_state.insert(cell,self.board_state[&cell]);
-                    match self.board_play_state[&cell] {
-                        Bomb => {
-                            self.board_play_state.insert(cell, Exploded);
-                            self.lose_game();
-                        },
-                        Checked(bombs) => {
-                            if bombs == Zero {
-                                self.reveal_safe_patch(cell).expect("");
-                            }
-                            self.checked_cells += 1;
-                            if self.checked_cells + self.flagged_cells == self.total_cells {
-                                self.win_game();
-                            } else {
-                                self.game_state = Playing;
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                Flagged => {
-                    self.board_play_state.insert(cell, Unchecked);
-                    self.flagged_cells -= 1;
-                }
-                _ => {}
+            Dig => {
+                self.dig_cell(cell, true);
             },
-            Flag => match self.board_play_state[&cell] {
-                Unchecked => {
-                    self.board_play_state.insert(cell,Flagged);
-                    self.flagged_cells += 1;
-                    if self.checked_cells + self.flagged_cells == self.total_cells {
-                        self.win_game();
-                    } else {
-                        self.game_state = Playing;
-                    }
-                }
-                Flagged => {
-                    self.board_play_state.insert(cell,Unchecked);
-                    self.flagged_cells -= 1;
-                }
-                _ => {}
+            Flag => {
+                self.flag_cell(cell);
             },
+            DigAround => {
+                self.dig_around_cell(cell);
+            }
+
         }
         info!("state: {:?}, flagged: {}, checked: {}", self.game_state, self.flagged_cells, self.checked_cells);
         Ok(())

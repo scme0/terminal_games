@@ -20,6 +20,7 @@ pub enum MouseAction {
     DownMiddle(Point),
     DownLeft(Point),
     DownRight(Point),
+    DoubleLeft(Point),
     UpMiddle(Point),
     UpLeft(Point),
     UpRight(Point),
@@ -62,6 +63,7 @@ impl MouseAction {
             MouseAction::DownMiddle(p) => p,
             MouseAction::DownLeft(p) => p,
             MouseAction::DownRight(p) => p,
+            MouseAction::DoubleLeft(p) => p,
             MouseAction::UpMiddle(p) => p,
             MouseAction::UpLeft(p) => p,
             MouseAction::UpRight(p) => p,
@@ -76,6 +78,7 @@ impl Display for MouseAction {
             MouseAction::DownMiddle(point) => write!(f, "DownMiddle with {:?}", point)?,
             MouseAction::DownLeft(point) => write!(f, "DownLeft with {:?}", point)?,
             MouseAction::DownRight(point) => write!(f, "DownRight with {:?}", point)?,
+            MouseAction::DoubleLeft(point) => write!(f, "DoubleLeft with {:?}", point)?,
             MouseAction::UpMiddle(point) => write!(f, "UpMiddle with {:?}", point)?,
             MouseAction::UpLeft(point) => write!(f, "UpLeft with {:?}", point)?,
             MouseAction::UpRight(point) => write!(f, "UpRight with {:?}", point)?,
@@ -301,7 +304,11 @@ impl Component for Window {
                 MouseAction::DownMiddle(_) => self.component.handle_click(MouseAction::DownMiddle(rel_point)),
                 MouseAction::DownLeft(_) => self.component.handle_click(MouseAction::DownLeft(rel_point)),
                 MouseAction::DownRight(_) => self.component.handle_click(MouseAction::DownRight(rel_point)),
-                _ => Ok(vec![])
+                MouseAction::DoubleLeft(_) => self.component.handle_click(MouseAction::DoubleLeft(rel_point)),
+                MouseAction::UpMiddle(_) => self.component.handle_click(MouseAction::UpMiddle(rel_point)),
+                MouseAction::UpLeft(_) => self.component.handle_click(MouseAction::UpLeft(rel_point)),
+                MouseAction::UpRight(_) => self.component.handle_click(MouseAction::UpRight(rel_point)),
+                MouseAction::Drag(_, vector) => self.component.handle_click(MouseAction::Drag(rel_point, vector))
             };
         }
         Ok(vec![])

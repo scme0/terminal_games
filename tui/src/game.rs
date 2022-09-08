@@ -4,11 +4,12 @@ use crossterm::{execute, terminal, ErrorKind, Result};
 use log::info;
 use std::io;
 use std::io::stdout;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use crate::game_screen::GameType;
-use crate::MouseAction::{DownLeft, DownMiddle, DownRight, Drag, UpLeft, UpMiddle, UpRight};
+use crate::MouseAction::{DoubleLeft, DownLeft, DownMiddle, DownRight, Drag, UpLeft, UpMiddle, UpRight};
 use crate::screen::{ClickAction, Point, Screen};
 use crate::screen::window::BorderStyle;
+use crate::screen::window::BorderStyle::Double;
 
 #[derive(PartialEq)]
 enum GameRunState {
@@ -18,7 +19,8 @@ enum GameRunState {
 
 struct State {
     screen: Screen,
-    last_left_click: Point
+    last_left_click: Point,
+    last_left_click_time: Instant
 }
 
 impl State {
@@ -26,7 +28,8 @@ impl State {
         let (width, height) = terminal::size().expect("");
         let mut state = State {
             screen: Screen::new(width as i32, height as i32),
-            last_left_click: (0,0).into()
+            last_left_click: (0,0).into(),
+            last_left_click_time: Instant::now()
         };
         state.screen.add(Window::new(
             (10, 5).into(),
@@ -122,8 +125,15 @@ impl State {
                 match button {
                     MouseButton::Left => {
                         let point = (x,y).into();
-                        self.last_left_click = point;
-                        Some(DownLeft(point))
+                        if point == self.last_left_click &&
+                            self.last_left_click_time.elapsed().as_millis() <= 500 {
+                            Some(DoubleLeft(point))
+                        }
+                        else{
+                            self.last_left_click = point;
+                            self.last_left_click_time = Instant::now();
+                            Some(DownLeft(point))
+                        }
                     },
                     MouseButton::Right => Some(DownRight((x, y).into())),
                     MouseButton::Middle => Some(DownMiddle((x, y).into()))
@@ -155,7 +165,7 @@ impl State {
                 }
             },
             MouseEventKind::Moved => {
-                info!("moved! {}, {}", x, y);
+                // info!("moved! {}, {}", x, y);
                 None
             },
             _ => None

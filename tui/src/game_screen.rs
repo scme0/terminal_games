@@ -164,6 +164,8 @@ impl Component for GameComponent {
             MouseAction::DownMiddle(p) => (Some(MoveType::Flag), p.into()),
             MouseAction::DownRight(p) => (Some(MoveType::Flag), p.into()),
             MouseAction::DownLeft(p) => (Some(MoveType::Dig), p.into()),
+            MouseAction::DoubleLeft(p) => {
+                (Some(MoveType::DigAround), p.into())},
             _ => (None, (0,0))
         };
         if let Some(mov) = move_type {
