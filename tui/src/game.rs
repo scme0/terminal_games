@@ -105,6 +105,10 @@ impl State {
                 ClickAction::Close(window_id) => {
                     windows_to_remove.push(window_id);
                 }
+                ClickAction::Refresh => {
+                    info!("REFRESHING");
+                    self.screen.refresh()?;
+                }
             }
         }
         if !windows_to_remove.is_empty() {

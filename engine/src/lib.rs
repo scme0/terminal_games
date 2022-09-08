@@ -14,7 +14,7 @@ use crate::MoveType::{Flag, Dig, DigAround};
 pub trait CanBeEngine {
     fn get_size(&self) -> (i32, i32);
     fn get_board_state(&self) -> (GameStats, HashMap<Cell,CellState>);
-    fn play_move(&mut self, move_type: MoveType, cell: Cell) -> Result<()>;
+    fn play_move(&mut self, move_type: MoveType, cell: Cell) -> Result<GameState>;
     fn make_clone(&self) -> Box<dyn CanBeEngine>;
 }
 
@@ -86,7 +86,7 @@ pub enum CellState {
     Exploded
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum CompleteState {
     Win,
     Lose,
@@ -99,6 +99,7 @@ pub enum GameState {
     Complete(CompleteState),
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct GameStats {
     pub game_state: GameState,
     pub flags_remaining: i32,
@@ -292,25 +293,29 @@ impl Engine {
         return cells;
     }
 
-    fn dig_around_cell(&mut self, cell: Cell) {
+    fn dig_around_cell(&mut self, cell: Cell) -> GameState {
         if let Checked(adjacentBombs) = self.board_play_state[&cell] {
             let surrounding_cells = self.get_surrounding_cells(cell, None);
             let num_flagged_surrounding_cells = surrounding_cells.iter().filter(|c|self.board_play_state[c] == Flagged).count();
             if adjacentBombs.to_usize() == num_flagged_surrounding_cells {
                 for c in surrounding_cells {
-                    self.dig_cell(c, false);
+                    if let Complete(state) = self.dig_cell(c, false) {
+                        return Complete(state);
+                    }
                 }
             }
         }
+        return Playing;
     }
 
-    fn flag_cell(&mut self, cell: Cell) {
+    fn flag_cell(&mut self, cell: Cell) -> GameState {
         match self.board_play_state[&cell] {
             Unchecked => {
                 self.board_play_state.insert(cell,Flagged);
                 self.flagged_cells += 1;
                 if self.checked_cells + self.flagged_cells == self.total_cells {
                     self.win_game();
+                    return Complete(Win);
                 } else {
                     self.game_state = Playing;
                 }
@@ -321,9 +326,10 @@ impl Engine {
             }
             _ => {}
         }
+        return Playing;
     }
 
-    fn dig_cell(&mut self, cell: Cell, alsoUnFlag: bool) {
+    fn dig_cell(&mut self, cell: Cell, also_unflag: bool) -> GameState {
         match self.board_play_state[&cell] {
             Unchecked => {
                 self.board_play_state.insert(cell, self.board_state[&cell]);
@@ -331,6 +337,7 @@ impl Engine {
                     Bomb => {
                         self.board_play_state.insert(cell, Exploded);
                         self.lose_game();
+                        return Complete(Lose);
                     },
                     Checked(bombs) => {
                         if bombs == Zero {
@@ -339,6 +346,7 @@ impl Engine {
                         self.checked_cells += 1;
                         if self.checked_cells + self.flagged_cells == self.total_cells {
                             self.win_game();
+                            return Complete(Win);
                         } else {
                             self.game_state = Playing;
                         }
@@ -347,13 +355,14 @@ impl Engine {
                 }
             }
             Flagged => {
-                if alsoUnFlag {
+                if also_unflag {
                     self.board_play_state.insert(cell, Unchecked);
                     self.flagged_cells -= 1;
                 }
             }
             _ => {}
         }
+        return Playing;
     }
 }
 
@@ -373,9 +382,9 @@ impl CanBeEngine for Engine {
         (GameStats {game_state: self.game_state, flags_remaining: self.bomb_count - self.flagged_cells, game_run_time: game_time}, self.board_play_state.clone())
     }
 
-    fn play_move(&mut self, move_type: MoveType, cell: Cell) -> Result<()> {
-        if let Complete(_) = self.game_state {
-            return Ok(());
+    fn play_move(&mut self, move_type: MoveType, cell: Cell) -> Result<GameState> {
+        if let Complete(state) = self.game_state {
+            return Ok(Complete(state));
         }
 
         if cell.x > self.width || cell.y > self.height {
@@ -394,20 +403,19 @@ impl CanBeEngine for Engine {
             self.initialise_board(cell)?;
         }
 
-        match move_type {
+        let game_state = match move_type {
             Dig => {
-                self.dig_cell(cell, true);
+                self.dig_cell(cell, true)
             },
             Flag => {
-                self.flag_cell(cell);
+                self.flag_cell(cell)
             },
             DigAround => {
-                self.dig_around_cell(cell);
+                self.dig_around_cell(cell)
             }
+        };
 
-        }
-        info!("state: {:?}, flagged: {}, checked: {}", self.game_state, self.flagged_cells, self.checked_cells);
-        Ok(())
+        Ok(game_state)
     }
 
     fn make_clone(&self) -> Box<dyn CanBeEngine> {

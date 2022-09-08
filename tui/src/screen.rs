@@ -14,13 +14,14 @@ use uuid::Uuid;
 use minesweeper_engine::CompleteState::Win;
 use window::Window;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ClickAction {
     Easy,
     Medium,
     Hard,
     Quit,
     Close(Uuid),
+    Refresh
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -99,8 +100,9 @@ impl Screen {
     pub fn handle_click(&mut self, click: MouseAction) -> Result<Vec<ClickAction>> {
         let (x,y) = click.to_point().into();
         let some_window = self.windows.iter_mut().enumerate().find(|(i,w)| {
-            return x >= w.location.x && x < w.location.x + w.size.width + 1 &&
-                y >= w.location.y && y < w.location.y + w.size.height + 1;
+            let size = w.get_size();
+            return x >= w.location.x && x < w.location.x + size.width + 1 &&
+                y >= w.location.y && y < w.location.y + size.height + 1;
         });
         if let Some((idx, window)) = some_window {
             // info!("got hit: {}", window.id);
@@ -193,9 +195,9 @@ impl Screen {
                 buffer.clear();
                 refresh = true;
             }
-
+            let window_size = window.get_size();
             for update_element in window.get_updates()?.iter(){
-                if update_element.point.y > window.size.height || update_element.point.x > window.size.width {
+                if update_element.point.y > window_size.height || update_element.point.x > window_size.width {
                     continue;
                 }
                 let mut value = update_element

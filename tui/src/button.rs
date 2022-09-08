@@ -33,8 +33,8 @@ impl Component for ButtonComponent {
         self.id
     }
 
-    fn get_size(&self) -> (i32, i32) {
-        return self.size.into();
+    fn get_size(&self) -> Dimension {
+        return self.size;
     }
 
     fn get_updates(&mut self) -> Result<Vec<UpdateElement>> {
