@@ -119,8 +119,8 @@ impl GameComponent {
             seconds = 999;
         }
         let seconds_string = format!("{:03}", seconds);
-        GameComponent::push_stat_char(prior_updates, &mut stat_line_points, clock_point,  '⏱');
-        GameComponent::push_stat_char(prior_updates, &mut stat_line_points, clock_point + (1,0).into(),  ' ');
+        GameComponent::push_stat_char(prior_updates, &mut stat_line_points, clock_point,  '🕑');//⏱
+        //GameComponent::push_stat_char(prior_updates, &mut stat_line_points, clock_point + (1,0).into(),  ' ');
 
         for (i,char) in seconds_string.chars().enumerate() {
             GameComponent::push_stat_char(prior_updates, &mut stat_line_points, clock_point + (((i+1) as i32)*2,0).into(),  convert_to_wide_char(char));
