@@ -2,9 +2,9 @@ use std::collections::{HashMap, HashSet};
 use crate::{MouseAction, Component, UpdateElement};
 use crossterm::{style::Color, Result};
 use log::info;
-use minesweeper_engine::{CanBeEngine, Cell, CellState, CompleteState, Engine, GameState, GameStats, MoveType};
+use minesweeper_engine::{CanBeEngine, Cell, CellState, CompleteState, Engine, GameState, GameStats, MoveType, ZeroToEight};
 use uuid::Uuid;
-use minesweeper_engine::AdjacentBombs::{Eight, Five, Four, One, Seven, Six, Three, Two, Zero};
+use minesweeper_engine::ZeroToEight::{Eight, Five, Four, One, Seven, Six, Three, Two, Zero};
 use minesweeper_engine::CellState::{Bomb, Checked, Flagged, Unchecked};
 use crate::screen::{ClickAction, Dimension, Point};
 use std::env::current_exe;
@@ -30,7 +30,8 @@ pub struct GameComponent {
     engine_size: Dimension,
     game_type: GameType,
     top_score_data: TopScore,
-    retry_button_location: Vec<Point>
+    retry_button_location: Vec<Point>,
+    chill_factor: ZeroToEight
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,7 +54,7 @@ impl GameComponent {
             })
         };
         let engine_size: Dimension =  engine.get_size().into();
-        GameComponent { id: Uuid::new_v4(), engine, engine_size, game_type, top_score_data: TopScore{scores:HashMap::new()}, retry_button_location: vec![] }
+        GameComponent { id: Uuid::new_v4(), engine, engine_size, game_type, top_score_data: TopScore{scores:HashMap::new()}, retry_button_location: vec![], chill_factor: Zero }
     }
 
     fn reset(&mut self) {
@@ -85,8 +86,8 @@ impl GameComponent {
         }
 
         let emoji =         match game_stats.game_state {
-            Initialised => '😶',
-            Playing => '😊',
+            Initialised => '🫥',
+            Playing => GameComponent::get_emoji_from_chill_factor(self.chill_factor),
             Complete(result) =>
                 match result {
                     CompleteState::Win => '🥳',
@@ -249,6 +250,34 @@ impl GameComponent {
         self.top_score_data = top_score_data;
         write(&path.clone(), serde_yaml::to_string(&self.top_score_data).expect("")).expect("");
     }
+
+    fn get_emoji_from_chill_factor(chill_factor: ZeroToEight) -> char{
+        match chill_factor {
+            Zero => '😊',
+            One => '🙂',
+            Two => '😐',
+            Three => '😕',
+            Four => '😟',
+            Five => '😩',
+            Six => '😱',
+            Seven => '🤯',
+            Eight => '🙃',
+        }
+    }
+
+    fn do_action_on_point_on_engine<V,T: Default>(&mut self, point: Point, variable: V, callback: fn (variable: V, engine: &mut Box<dyn CanBeEngine>, p: Point) -> Result<T>) -> Result<T> {
+        let(mut x, mut y) = point.into();
+        if x % 2 == 1 {
+            x -= 1;
+        }
+        x /= 2;
+        y -= 2;
+
+        if x >= 0 && x < self.engine_size.width && y >= 0 && y < self.engine_size.height {
+            return callback(variable, &mut self.engine, (x,y).into());
+        }
+        Ok(T::default())
+    }
 }
 
 impl Component for GameComponent {
@@ -275,38 +304,56 @@ impl Component for GameComponent {
 
     fn handle_click(&mut self, click: MouseAction) -> Result<Vec<ClickAction>> {
         let mut click_actions = vec![];
-        let (move_type, (mut x, mut y)) = match click {
-            MouseAction::DownMiddle(p) => (Some(MoveType::Flag), p.into()),
-            MouseAction::DownRight(p) => (Some(MoveType::Flag), p.into()),
-            MouseAction::DownLeft(p) => {
+        let (move_type, point) = match click {
+            MouseAction::Middle(p) => (Some(MoveType::Flag), p),
+            MouseAction::Right(p) => (Some(MoveType::Flag), p),
+            MouseAction::Left(p) => {
                 if self.retry_button_location.contains(&click.to_point()) {
                     self.reset();
                     click_actions.push(Refresh);
-                    (None, (0,0))
+                    (None, (0,0).into())
                 } else {
-                    (Some(MoveType::Dig), p.into())
+                    (Some(MoveType::Dig), p)
                 }
             },
-            MouseAction::DoubleLeft(p) => { (Some(MoveType::DigAround), p.into())},
-            _ => (None, (0,0))
+            MouseAction::Move(p) => {
+                info!("Move Point: {:?}",p);
+                self.chill_factor = self.do_action_on_point_on_engine(p, (), |_, e, p| {
+                    e.get_chill_factor(Cell{x: p.x, y: p.y})
+                })?;
+                return Ok(vec![]);
+            }
+            MouseAction::Double(p) => { (Some(MoveType::DigAround), p)},
+            _ => (None, (0,0).into())
         };
         if let Some(mov) = move_type {
-            if x % 2 == 1 {
-                x -= 1;
+            let move_result = self.do_action_on_point_on_engine(point, mov, |m,e, p| {
+                e.play_move(m, Cell { x: p.x, y: p.y })
+            })?;
+            if let Complete(result) = move_result {
+                let score = if result == CompleteState::Win {
+                    self.engine.get_board_state().0.game_run_time
+                } else {
+                    u64::MAX
+                };
+                self.load_best_score(score);
             }
-            x /= 2;
-            y -= 2;
-
-            if x >= 0 && x < self.engine_size.width && y >= 0 && y < self.engine_size.height {
-                if let Complete(result) = self.engine.play_move(mov, Cell {x, y})? {
-                    let score = if result == CompleteState::Win {
-                        self.engine.get_board_state().0.game_run_time
-                    } else {
-                        u64::MAX
-                    };
-                    self.load_best_score(score);
-                }
-            }
+            // if x % 2 == 1 {
+            //     x -= 1;
+            // }
+            // x /= 2;
+            // y -= 2;
+            //
+            // if x >= 0 && x < self.engine_size.width && y >= 0 && y < self.engine_size.height {
+            //     if let Complete(result) = self.engine.play_move(mov, Cell {x, y})? {
+            //         let score = if result == CompleteState::Win {
+            //             self.engine.get_board_state().0.game_run_time
+            //         } else {
+            //             u64::MAX
+            //         };
+            //         self.load_best_score(score);
+            //     }
+            // }
         }
         Ok(click_actions)
     }
@@ -353,5 +400,9 @@ impl CanBeEngine for TestEngine {
 
     fn make_clone(&self) -> Box<dyn CanBeEngine> {
         Box::from(TestEngine::new())
+    }
+
+    fn get_chill_factor(&mut self, _: Cell) -> Result<ZeroToEight> {
+        Ok(Eight)
     }
 }

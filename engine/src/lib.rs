@@ -8,7 +8,7 @@ use std::io;
 use std::time::Instant;
 use log::info;
 use queues::{IsQueue, Queue, queue};
-use crate::AdjacentBombs::{Eight, Five, Four, One, Seven, Six, Three, Two, Zero};
+use crate::ZeroToEight::{Eight, Five, Four, One, Seven, Six, Three, Two, Zero};
 use crate::MoveType::{Flag, Dig, DigAround};
 
 pub trait CanBeEngine {
@@ -16,6 +16,7 @@ pub trait CanBeEngine {
     fn get_board_state(&self) -> (GameStats, HashMap<Cell,CellState>);
     fn play_move(&mut self, move_type: MoveType, cell: Cell) -> Result<GameState>;
     fn make_clone(&self) -> Box<dyn CanBeEngine>;
+    fn get_chill_factor(&mut self, cell: Cell) -> Result<ZeroToEight>;
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -31,8 +32,9 @@ impl From<Cell> for (i32, i32) {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum AdjacentBombs {
+#[derive(Debug, Copy, Clone, PartialEq, Default)]
+pub enum ZeroToEight {
+    #[default]
     Zero = 0,
     One = 1,
     Two = 2,
@@ -44,8 +46,8 @@ pub enum AdjacentBombs {
     Eight = 8,
 }
 
-impl AdjacentBombs {
-    pub fn from_u8(number: u8) -> Result<AdjacentBombs> {
+impl ZeroToEight {
+    pub fn from_u8(number: u8) -> Result<ZeroToEight> {
         let bombs = match number {
             0 => Zero,
             1 => One,
@@ -79,7 +81,7 @@ impl AdjacentBombs {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum CellState {
     Unchecked,
-    Checked(AdjacentBombs),
+    Checked(ZeroToEight),
     Flagged,
     Bomb,
     Cross,
@@ -92,9 +94,10 @@ pub enum CompleteState {
     Lose,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub enum GameState {
     Initialised,
+    #[default]
     Playing,
     Complete(CompleteState),
 }
@@ -193,7 +196,7 @@ impl Engine {
             if let Checked(bombs) = s.board_state[&c] {
                 let mut bombs_as_byte = bombs as u8;
                 bombs_as_byte += 1;
-                let new_bombs = AdjacentBombs::from_u8(bombs_as_byte).expect("");
+                let new_bombs = ZeroToEight::from_u8(bombs_as_byte).expect("");
                 s.board_state.insert(c, Checked(new_bombs));
             }
         }));
@@ -420,5 +423,34 @@ impl CanBeEngine for Engine {
 
     fn make_clone(&self) -> Box<dyn CanBeEngine> {
         Box::from(Engine::new(self.width, self.height, self.bomb_count))
+    }
+
+    fn get_chill_factor(&mut self, cell: Cell) -> Result<ZeroToEight> {
+        let mut cell_states: Vec<CellState> = vec![self.board_play_state[&cell]].clone();
+        let other_cells = self.get_surrounding_cells(cell, None);
+        for cell in other_cells.iter() {
+            cell_states.push(self.board_play_state[cell]);
+        }
+        let cell_states_len = cell_states.len();
+        let mut sum_of_chills :u8 = 0;
+        for state in cell_states {
+            // sum_of_chills +=
+            let value =
+                match state {
+                Unchecked => 0,
+                Checked(count) => {
+                    count.to_usize() as u8
+                }
+                Flagged => 0,
+                Bomb => 8,
+                Cross => 0,
+                Exploded => 8
+            };
+            if value > sum_of_chills {
+                sum_of_chills = value;
+            }
+        }
+        //sum_of_chills /= cell_states_len as u8;
+        ZeroToEight::from_u8(sum_of_chills)
     }
 }

@@ -111,13 +111,11 @@ impl Screen {
                 p.x -= window.location.x;
                 p.y -= window.location.y;
                 return window.handle_click(match click {
-                    MouseAction::DownMiddle(_) => MouseAction::DownMiddle(p),
-                    MouseAction::DownLeft(_) => MouseAction::DownLeft(p),
-                    MouseAction::DownRight(_) => MouseAction::DownRight(p),
-                    MouseAction::DoubleLeft(_) => MouseAction::DoubleLeft(p),
-                    MouseAction::UpMiddle(_) => MouseAction::UpMiddle(p),
-                    MouseAction::UpLeft(_) => MouseAction::UpLeft(p),
-                    MouseAction::UpRight(_) => MouseAction::UpRight(p),
+                    MouseAction::Middle(_) => MouseAction::Middle(p),
+                    MouseAction::Left(_) => MouseAction::Left(p),
+                    MouseAction::Right(_) => MouseAction::Right(p),
+                    MouseAction::Double(_) => MouseAction::Double(p),
+                    MouseAction::Move(_) => MouseAction::Move(p),
                     MouseAction::Drag(_, mut to) => {
                         to.x -= window.location.x;
                         to.y -= window.location.y;
@@ -126,7 +124,7 @@ impl Screen {
                 });
             } else {
                 //info!("Here!: {:?}", click);
-                if let MouseAction::DownLeft(_) = click {
+                if let MouseAction::Left(_) = click {
                     //info!("will do stuff after here...");
                     //info!("will shuffle: {:?}", self.windows.iter().map(|w| (w.z, w.id)));
                     self.shuffle_windows_back_from_z(0, 0);

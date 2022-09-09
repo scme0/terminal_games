@@ -17,13 +17,11 @@ pub struct UpdateElement {
 
 #[derive(Debug, Copy, Clone)]
 pub enum MouseAction {
-    DownMiddle(Point),
-    DownLeft(Point),
-    DownRight(Point),
-    DoubleLeft(Point),
-    UpMiddle(Point),
-    UpLeft(Point),
-    UpRight(Point),
+    Middle(Point),
+    Left(Point),
+    Right(Point),
+    Double(Point),
+    Move(Point),
     Drag(Point, Point)
 }
 
@@ -60,14 +58,12 @@ impl BorderElements {
 impl MouseAction {
     pub fn to_point(&self) -> Point {
         match *self {
-            MouseAction::DownMiddle(p) => p,
-            MouseAction::DownLeft(p) => p,
-            MouseAction::DownRight(p) => p,
-            MouseAction::DoubleLeft(p) => p,
-            MouseAction::UpMiddle(p) => p,
-            MouseAction::UpLeft(p) => p,
-            MouseAction::UpRight(p) => p,
-            MouseAction::Drag(from, _) => from
+            MouseAction::Middle(p) => p,
+            MouseAction::Left(p) => p,
+            MouseAction::Right(p) => p,
+            MouseAction::Double(p) => p,
+            MouseAction::Move(p) => p,
+            MouseAction::Drag(from, _) => from,
         }
     }
 }
@@ -75,13 +71,11 @@ impl MouseAction {
 impl Display for MouseAction {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            MouseAction::DownMiddle(point) => write!(f, "DownMiddle with {:?}", point)?,
-            MouseAction::DownLeft(point) => write!(f, "DownLeft with {:?}", point)?,
-            MouseAction::DownRight(point) => write!(f, "DownRight with {:?}", point)?,
-            MouseAction::DoubleLeft(point) => write!(f, "DoubleLeft with {:?}", point)?,
-            MouseAction::UpMiddle(point) => write!(f, "UpMiddle with {:?}", point)?,
-            MouseAction::UpLeft(point) => write!(f, "UpLeft with {:?}", point)?,
-            MouseAction::UpRight(point) => write!(f, "UpRight with {:?}", point)?,
+            MouseAction::Middle(point) => write!(f, "Middle with {:?}", point)?,
+            MouseAction::Left(point) => write!(f, "Left with {:?}", point)?,
+            MouseAction::Right(point) => write!(f, "Right with {:?}", point)?,
+            MouseAction::Double(point) => write!(f, "Double with {:?}", point)?,
+            MouseAction::Move(point) => write!(f, "Move with {:?}", point)?,
             MouseAction::Drag(from, to) => write!(f, "Drag from {:?} to: {:?}", from, to)?,
         }
         Ok(())
@@ -192,7 +186,7 @@ impl Window {
             if let Some(close_pos) = self.close_point {
                 top_line_right_offset = 2;
                 // draw Close button.
-                updates.push(UpdateElement {point: close_pos, value: 'Ⓧ', fg: None});
+                updates.push(UpdateElement {point: close_pos, value: 'Ⓧ', fg: None});//ⓍX╳
                 updates.push(UpdateElement {point: close_pos + (1,0).into(), value: ' ', fg: None});
             }
 
@@ -271,7 +265,7 @@ impl Component for Window {
             (action_point.x == 0 || action_point.x == 1 || action_point.x == size.width - 1 || action_point.x == size.width - 2
                 || action_point.y == 0 || action_point.y == size.height){
             match mouse_action {
-                MouseAction::DownLeft(_) => {
+                MouseAction::Left(_) => {
                     if let Some(close_point) = self.close_point {
                         if action_point == close_point || action_point == close_point + (1,0).into() {
                             return Ok(vec![Close(self.get_id())])
@@ -307,14 +301,12 @@ impl Component for Window {
             let rel_point = calculate_relative_x_y(self, action_point);
             // info!("Going to send this click to the component at point: {:?}, orig: {:?}, win.x {:?}, win.y {:?}", rel_point, action_point, self.x, self.y);
             let click_actions = match mouse_action {
-                MouseAction::DownMiddle(_) => self.component.handle_click(MouseAction::DownMiddle(rel_point))?,
-                MouseAction::DownLeft(_) => self.component.handle_click(MouseAction::DownLeft(rel_point))?,
-                MouseAction::DownRight(_) => self.component.handle_click(MouseAction::DownRight(rel_point))?,
-                MouseAction::DoubleLeft(_) => self.component.handle_click(MouseAction::DoubleLeft(rel_point))?,
-                MouseAction::UpMiddle(_) => self.component.handle_click(MouseAction::UpMiddle(rel_point))?,
-                MouseAction::UpLeft(_) => self.component.handle_click(MouseAction::UpLeft(rel_point))?,
-                MouseAction::UpRight(_) => self.component.handle_click(MouseAction::UpRight(rel_point))?,
-                MouseAction::Drag(_, vector) => self.component.handle_click(MouseAction::Drag(rel_point, vector))?
+                MouseAction::Middle(_) => self.component.handle_click(MouseAction::Middle(rel_point))?,
+                MouseAction::Left(_) => self.component.handle_click(MouseAction::Left(rel_point))?,
+                MouseAction::Right(_) => self.component.handle_click(MouseAction::Right(rel_point))?,
+                MouseAction::Double(_) => self.component.handle_click(MouseAction::Double(rel_point))?,
+                MouseAction::Move(_) => self.component.handle_click(MouseAction::Move(rel_point))?,
+                MouseAction::Drag(_, vector) => self.component.handle_click(MouseAction::Drag(rel_point, vector))?,
             };
             if click_actions.contains(&Refresh) {
                 self.refresh = true;

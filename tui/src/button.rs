@@ -66,7 +66,7 @@ impl Component for ButtonComponent {
 
     fn handle_click(&mut self, click: MouseAction) -> Result<Vec<ClickAction>> {
         Ok(match click {
-            MouseAction::DownLeft(_) => vec![self.click_action.clone()],
+            MouseAction::Left(_) => vec![self.click_action.clone()],
             _ => vec![]
         })
     }

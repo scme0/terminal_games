@@ -6,10 +6,9 @@ use std::io;
 use std::io::stdout;
 use std::time::{Duration, Instant};
 use crate::game_screen::GameType;
-use crate::MouseAction::{DoubleLeft, DownLeft, DownMiddle, DownRight, Drag, UpLeft, UpMiddle, UpRight};
+use crate::MouseAction::{Double, Left, Middle, Right, Drag, Move};
 use crate::screen::{ClickAction, Point, Screen};
 use crate::screen::window::BorderStyle;
-use crate::screen::window::BorderStyle::Double;
 
 #[derive(PartialEq)]
 enum GameRunState {
@@ -106,7 +105,6 @@ impl State {
                     windows_to_remove.push(window_id);
                 }
                 ClickAction::Refresh => {
-                    info!("REFRESHING");
                     self.screen.refresh()?;
                 }
             }
@@ -131,25 +129,29 @@ impl State {
                         let point = (x,y).into();
                         if point == self.last_left_click &&
                             self.last_left_click_time.elapsed().as_millis() <= 500 {
-                            Some(DoubleLeft(point))
+                            Some(Double(point))
                         }
                         else{
                             self.last_left_click = point;
                             self.last_left_click_time = Instant::now();
-                            Some(DownLeft(point))
+                            Some(Left(point))
                         }
                     },
-                    MouseButton::Right => Some(DownRight((x, y).into())),
-                    MouseButton::Middle => Some(DownMiddle((x, y).into()))
+                    MouseButton::Right => Some(Right((x, y).into())),
+                    MouseButton::Middle => Some(Middle((x, y).into()))
                 }
             },
             MouseEventKind::Up(button) => {
                 // info!("up! {}, {}, {:?}", x, y, button);
+                // Some terminals show "Up" instead of Move.
                 match button {
-                    MouseButton::Left => Some(UpLeft((x, y).into())),
-                    MouseButton::Right => Some(UpRight((x, y).into())),
-                    MouseButton::Middle => Some(UpMiddle((x, y).into()))
+                    MouseButton::Left => Some(Move((x, y).into())),
+                    _ => None
                 }
+            },
+            MouseEventKind::Moved => {
+                // info!("moved! {}, {}", x, y);
+                Some(Move((x, y).into()))
             },
             MouseEventKind::Drag(button) => {
                 match button {
@@ -167,10 +169,6 @@ impl State {
                     },
                     _ => None
                 }
-            },
-            MouseEventKind::Moved => {
-                // info!("moved! {}, {}", x, y);
-                None
             },
             _ => None
         };
