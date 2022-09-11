@@ -1,6 +1,6 @@
 # terminal_games
 
-Just a little project to help me learn some of the ins and outs of Rust. I'm a C# developer by trade so I'm sure most of my code here is too "object-oriented"y for hardcore Rustaceans but I'm trying to pull my head out of that space :).
+Just a little project to help me learn some of the ins and outs of Rust.
 
 ## minesweeper
 
