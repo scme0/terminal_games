@@ -1,7 +1,7 @@
-use crate::{MouseAction, Component, UpdateElement};
 use crossterm::Result;
 use uuid::Uuid;
 use crate::screen::{ClickAction, Dimension};
+use crate::screen::window::{Component, MouseAction, UpdateElement};
 
 #[derive(Debug, Clone)]
 pub struct ButtonComponent {

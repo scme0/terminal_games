@@ -1,7 +1,6 @@
 pub mod window;
 
 use std::cmp::Ordering;
-use crate::{MouseAction, Component};
 use crossterm::{cursor, queue, style::{self, Color, StyledContent, Stylize}, ErrorKind, Result, terminal};
 use std::collections::{HashMap, HashSet};
 use std::io;
@@ -9,6 +8,7 @@ use std::io::{stdout, Stdout, Write};
 use std::ops::{Add, Sub};
 use uuid::Uuid;
 use window::Window;
+use crate::screen::window::{Component, MouseAction};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ClickAction {

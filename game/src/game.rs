@@ -1,12 +1,12 @@
-use crate::{ButtonComponent, GameView, Window};
 use crossterm::event::{read, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, MouseButton, MouseEvent, MouseEventKind, poll};
 use crossterm::{execute, terminal, Result};
 use std::io::stdout;
 use std::time::{Duration, Instant};
-use crate::game_view::GameType;
-use crate::MouseAction::{Double, Left, Middle, Right, Drag, Move};
-use crate::screen::{ClickAction, Point, Screen};
-use crate::screen::window::BorderStyle;
+use tui::button::ButtonComponent;
+use tui::game_view::{GameType, GameView};
+use tui::screen::{ClickAction, Point, Screen};
+use tui::screen::window::{BorderStyle, Window};
+use tui::screen::window::MouseAction::{Double, Drag, Left, Middle, Move, Right};
 
 #[derive(PartialEq)]
 enum GameRunState {

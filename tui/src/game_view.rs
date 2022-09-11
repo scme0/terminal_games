@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use crate::{Component, MouseAction, UpdateElement};
 use crossterm::{Result, style::Color};
 use log::info;
 use minesweeper_engine::engine::Engine;
@@ -21,6 +20,7 @@ use minesweeper_engine::game_stats::GameStats;
 use minesweeper_engine::move_type::MoveType;
 use minesweeper_engine::zero_to_eight::ZeroToEight;
 use crate::screen::ClickAction::Refresh;
+use crate::screen::window::{Component, MouseAction, UpdateElement};
 
 const VISUAL_TEST: bool = false;
 

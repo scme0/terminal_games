@@ -1,6 +1,7 @@
 [workspace]
 
 members = [
+    "game",
     "tui",
     "minesweeper/engine",
 ]
