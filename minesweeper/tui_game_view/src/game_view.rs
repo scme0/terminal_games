@@ -189,8 +189,9 @@ impl GameView {
                 }
             },
             Some(result) => {
-                if result.to_owned() != u64::MAX{
-                    result.to_owned()
+                let owned_result = result.to_owned();
+                if owned_result != u64::MAX{
+                    owned_result
                 } else{
                     0
                 }
@@ -234,10 +235,11 @@ impl GameView {
                 current_score
             },
             Some(result) => {
-                if current_score < result.to_owned() {
+                let owned_result = result.to_owned();
+                if current_score < owned_result {
                     current_score
                 } else {
-                    result.to_owned()
+                    owned_result
                 }
             }
         };
