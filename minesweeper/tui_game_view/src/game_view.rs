@@ -5,7 +5,6 @@ use minesweeper_engine::engine::Engine;
 use uuid::Uuid;
 use minesweeper_engine::zero_to_eight::ZeroToEight::{Eight, Five, Four, One, Seven, Six, Three, Two, Zero};
 use minesweeper_engine::cell_state::CellState::{Bomb, Checked, Flagged, Unchecked};
-use crate::screen::{ClickAction, Dimension, Point};
 use std::env::current_exe;
 use std::fs::{File, write};
 use serde::{Deserialize, Serialize};
@@ -19,8 +18,9 @@ use minesweeper_engine::game_state::GameState;
 use minesweeper_engine::game_stats::GameStats;
 use minesweeper_engine::move_type::MoveType;
 use minesweeper_engine::zero_to_eight::ZeroToEight;
-use crate::screen::ClickAction::Refresh;
-use crate::screen::window::{Component, MouseAction, UpdateElement};
+use tui::screen::{ClickAction, Dimension, Point};
+use tui::screen::ClickAction::Refresh;
+use tui::screen::window::{Component, MouseAction, UpdateElement};
 
 const VISUAL_TEST: bool = false;
 

@@ -2,8 +2,8 @@ use crossterm::event::{read, DisableMouseCapture, EnableMouseCapture, Event, Key
 use crossterm::{execute, terminal, Result};
 use std::io::stdout;
 use std::time::{Duration, Instant};
+use minesweeper_tui_game_view::game_view::{GameType, GameView};
 use tui::button::ButtonComponent;
-use tui::game_view::{GameType, GameView};
 use tui::screen::{ClickAction, Point, Screen};
 use tui::screen::window::{BorderStyle, Window};
 use tui::screen::window::MouseAction::{Double, Drag, Left, Middle, Move, Right};

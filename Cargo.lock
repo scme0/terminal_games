@@ -231,6 +231,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "minesweeper_tui_game_view"
+version = "0.1.0"
+dependencies = [
+ "argh",
+ "bitflags",
+ "cassowary",
+ "crossterm",
+ "flexi_logger",
+ "log",
+ "minesweeper_engine",
+ "rand",
+ "serde",
+ "serde_yaml",
+ "sorted-list",
+ "tui",
+ "unicode-segmentation",
+ "unicode-width",
+ "uuid",
+]
+
+[[package]]
 name = "mio"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -475,6 +496,7 @@ dependencies = [
  "flexi_logger",
  "log",
  "minesweeper_engine",
+ "minesweeper_tui_game_view",
  "rand",
  "serde",
  "serde_yaml",
@@ -533,7 +555,6 @@ dependencies = [
  "crossterm",
  "flexi_logger",
  "log",
- "minesweeper_engine",
  "rand",
  "serde",
  "serde_yaml",
