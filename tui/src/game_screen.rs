@@ -8,7 +8,6 @@ use minesweeper_engine::ZeroToEight::{Eight, Five, Four, One, Seven, Six, Three,
 use minesweeper_engine::CellState::{Bomb, Checked, Flagged, Unchecked};
 use crate::screen::{ClickAction, Dimension, Point};
 use std::env::current_exe;
-use std::fs;
 use std::fs::{File, write};
 use serde::{Deserialize, Serialize};
 use minesweeper_engine::GameState::{Complete,Playing,Initialised};
@@ -45,7 +44,7 @@ fn convert_to_wide_char(c: char) -> char {
 
 impl GameComponent {
     pub fn new(game_type: GameType) -> GameComponent {
-        let mut engine: Box<dyn CanBeEngine> = match VISUAL_TEST {
+        let engine: Box<dyn CanBeEngine> = match VISUAL_TEST {
             true => Box::from(TestEngine::new()),
             false => Box::from(match game_type {
                 GameType::Easy => Engine::new(11, 8, 12),
@@ -99,33 +98,27 @@ impl GameComponent {
 
         // draw flag count
         let flag_point = (((emoji_point.x / 2) - 1 - 4),emoji_point.y).into();
-        // info!("flag_point: {:?}", flag_point);
         let mut flags = game_stats.flags_remaining;
         if flags > 999 {
             flags = 999;
         }
         let flag_string = format!("{:03}", flags);
         GameComponent::push_stat_char(prior_updates, &mut stat_line_points, flag_point,  '🚩');
-        // push_stat_char(prior_updates, &mut stat_line_points, flag_point + (1,0).into(),  char::default());
         for (i,char) in flag_string.chars().enumerate() {
             GameComponent::push_stat_char(prior_updates, &mut stat_line_points, flag_point + (((i+1) as i32)*2,0).into(), convert_to_wide_char(char));
-            // push_stat_char(prior_updates, &mut stat_line_points, flag_point + (((i+1) as i32)*2+1,0).into(), char::default());
         }
 
         // draw clock
         let clock_point = ((((emoji_point.x / 2) - 1) + emoji_point.x),emoji_point.y).into();
-        // info!("clock_point: {:?}", clock_point);
         let mut seconds = game_stats.game_run_time;
         if seconds > 999 {
             seconds = 999;
         }
         let seconds_string = format!("{:03}", seconds);
-        GameComponent::push_stat_char(prior_updates, &mut stat_line_points, clock_point,  '🕑');//⏱
-        //GameComponent::push_stat_char(prior_updates, &mut stat_line_points, clock_point + (1,0).into(),  ' ');
+        GameComponent::push_stat_char(prior_updates, &mut stat_line_points, clock_point,  '🕑');
 
         for (i,char) in seconds_string.chars().enumerate() {
             GameComponent::push_stat_char(prior_updates, &mut stat_line_points, clock_point + (((i+1) as i32)*2,0).into(),  convert_to_wide_char(char));
-            // push_stat_char(prior_updates, &mut stat_line_points, clock_point + (((i+1) as i32)*2+1,0).into(),  char::default());
         }
 
         for left_over_point in stat_line_points.iter(){
@@ -205,7 +198,6 @@ impl GameComponent {
         }
 
         let retry_point: Point = ((((halfway_point.x / 2) - 1) + halfway_point.x),halfway_point.y).into();
-        // info!("retry_point: {:?}", retry_point);
         for (i, char) in "Retry?".chars().enumerate() {
             updates.push(UpdateElement{ point: retry_point + (i as i32,0).into(), value: char, fg: None});
         }
@@ -338,22 +330,6 @@ impl Component for GameComponent {
                 };
                 self.load_best_score(score);
             }
-            // if x % 2 == 1 {
-            //     x -= 1;
-            // }
-            // x /= 2;
-            // y -= 2;
-            //
-            // if x >= 0 && x < self.engine_size.width && y >= 0 && y < self.engine_size.height {
-            //     if let Complete(result) = self.engine.play_move(mov, Cell {x, y})? {
-            //         let score = if result == CompleteState::Win {
-            //             self.engine.get_board_state().0.game_run_time
-            //         } else {
-            //             u64::MAX
-            //         };
-            //         self.load_best_score(score);
-            //     }
-            // }
         }
         Ok(click_actions)
     }

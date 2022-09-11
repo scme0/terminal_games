@@ -1,8 +1,6 @@
-use crate::{ButtonComponent, MouseAction, Component, GameComponent, Window};
+use crate::{ButtonComponent, GameComponent, Window};
 use crossterm::event::{read, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, MouseButton, MouseEvent, MouseEventKind, poll};
-use crossterm::{execute, terminal, ErrorKind, Result};
-use log::info;
-use std::io;
+use crossterm::{execute, terminal, Result};
 use std::io::stdout;
 use std::time::{Duration, Instant};
 use crate::game_screen::GameType;
@@ -23,13 +21,22 @@ struct State {
 }
 
 impl State {
-    fn new() -> Self {
-        let (width, height) = terminal::size().expect("");
+    fn new() -> Result<Self> {
+        let (width, height) = terminal::size()?;
         let mut state = State {
             screen: Screen::new(width as i32, height as i32),
             last_left_click: (0,0).into(),
             last_left_click_time: Instant::now()
         };
+        state.screen.add(Window::new(
+            (0,0).into(),
+            99,
+            Box::from(ButtonComponent::new(Box::from("Quit"), (6,1).into(), ClickAction::Quit)),
+            BorderStyle::Dotted,
+            Box::default(),
+            false,
+            false
+        ))?;
         state.screen.add(Window::new(
             (10, 5).into(),
             99,
@@ -38,7 +45,7 @@ impl State {
             Box::default(),
             false,
             false
-        )).expect("");
+        ))?;
         state.screen.add(Window::new(
             (20, 5).into(),
             98,
@@ -47,7 +54,7 @@ impl State {
             Box::default(),
             false,
             false
-        )).expect("");
+        ))?;
         state.screen.add(Window::new(
             (30, 5).into(),
             97,
@@ -56,9 +63,9 @@ impl State {
             Box::default(),
             false,
             false
-        )).expect("");
+        ))?;
 
-        return state;
+        return Ok(state);
     }
 
     fn handle_click_actions(&mut self, click_actions: Vec<ClickAction>) -> Result<GameRunState>{
@@ -142,7 +149,6 @@ impl State {
                 }
             },
             MouseEventKind::Up(button) => {
-                // info!("up! {}, {}, {:?}", x, y, button);
                 // Some terminals show "Up" instead of Move.
                 match button {
                     MouseButton::Left => Some(Move((x, y).into())),
@@ -150,7 +156,6 @@ impl State {
                 }
             },
             MouseEventKind::Moved => {
-                // info!("moved! {}, {}", x, y);
                 Some(Move((x, y).into()))
             },
             MouseEventKind::Drag(button) => {
@@ -163,9 +168,7 @@ impl State {
                         let to = (x, y).into();
                         let from = self.last_left_click;
                         self.last_left_click = to;
-                        // info!("drag! {:?}, {:?}", to, from);
                         Some(Drag(from, to))
-
                     },
                     _ => None
                 }
@@ -215,7 +218,7 @@ pub fn start() -> Result<()> {
     terminal::enable_raw_mode()?;
     execute!(stdout, EnableMouseCapture)?;
 
-    let mut state: State = State::new();
+    let mut state: State = State::new()?;
     let result = state.game_loop();
 
     execute!(stdout, DisableMouseCapture)?;

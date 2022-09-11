@@ -1,5 +1,4 @@
 use crate::{MouseAction, Component, UpdateElement};
-use crossterm::style::Color;
 use crossterm::Result;
 use uuid::Uuid;
 use crate::screen::{ClickAction, Dimension};
@@ -22,9 +21,6 @@ impl ButtonComponent {
             changed: true,
             click_action,
         };
-    }
-    pub fn update_click_action(&mut self, click_action: ClickAction) {
-        self.click_action = click_action;
     }
 }
 

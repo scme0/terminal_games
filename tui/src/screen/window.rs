@@ -2,8 +2,6 @@ use crossterm::style::Color;
 use crossterm::Result;
 use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Formatter};
-use crossterm::event::Event::Mouse;
-use log::info;
 use uuid::Uuid;
 use crate::screen::{ClickAction, Dimension, Point};
 use crate::screen::ClickAction::{Close, Refresh};
@@ -186,7 +184,7 @@ impl Window {
             if let Some(close_pos) = self.close_point {
                 top_line_right_offset = 2;
                 // draw Close button.
-                updates.push(UpdateElement {point: close_pos, value: 'Ⓧ', fg: None});//ⓍX╳
+                updates.push(UpdateElement {point: close_pos, value: 'Ⓧ', fg: None});
                 updates.push(UpdateElement {point: close_pos + (1,0).into(), value: ' ', fg: None});
             }
 
@@ -258,7 +256,6 @@ impl Component for Window {
     }
 
     fn handle_click(&mut self, mouse_action: MouseAction) -> Result<Vec<ClickAction>> {
-        // info!("A mouse action! {:?}", mouse_action);
         let size = self.get_size();
         let action_point = mouse_action.to_point();
         if self.border_style != BorderStyle::None &&
@@ -275,7 +272,6 @@ impl Component for Window {
                 MouseAction::Drag(starting_point, drag_point) => {
                     if self.can_move {
                         let movement_vector = drag_point - starting_point;
-                        // info!("Dragging: {:?}, {:?}, {:?}", starting_point, drag_point, movement_vector);
                         let mut new_x = self.location.x + movement_vector.x;
                         let mut new_y = self.location.y + movement_vector.y;
                         if new_x < 0 {
@@ -290,7 +286,6 @@ impl Component for Window {
                             self.location.x = new_x;
                             self.location.y = new_y;
                             self.refresh = true;
-                            // info!("moved window: {}, {}", self.x, self.y);
                         }
                     }
                     return Ok(vec![]);
@@ -299,7 +294,6 @@ impl Component for Window {
             }
         } else {
             let rel_point = calculate_relative_x_y(self, action_point);
-            // info!("Going to send this click to the component at point: {:?}, orig: {:?}, win.x {:?}, win.y {:?}", rel_point, action_point, self.x, self.y);
             let click_actions = match mouse_action {
                 MouseAction::Middle(_) => self.component.handle_click(MouseAction::Middle(rel_point))?,
                 MouseAction::Left(_) => self.component.handle_click(MouseAction::Left(rel_point))?,

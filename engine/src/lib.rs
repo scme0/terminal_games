@@ -6,7 +6,6 @@ use crossterm::{ErrorKind, Result};
 use rand::Rng;
 use std::io;
 use std::time::Instant;
-use log::info;
 use queues::{IsQueue, Queue, queue};
 use crate::ZeroToEight::{Eight, Five, Four, One, Seven, Six, Three, Two, Zero};
 use crate::MoveType::{Flag, Dig, DigAround};
@@ -297,10 +296,10 @@ impl Engine {
     }
 
     fn dig_around_cell(&mut self, cell: Cell) -> GameState {
-        if let Checked(adjacentBombs) = self.board_play_state[&cell] {
+        if let Checked(adjacent_bombs) = self.board_play_state[&cell] {
             let surrounding_cells = self.get_surrounding_cells(cell, None);
             let num_flagged_surrounding_cells = surrounding_cells.iter().filter(|c|self.board_play_state[c] == Flagged).count();
-            if adjacentBombs.to_usize() == num_flagged_surrounding_cells {
+            if adjacent_bombs.to_usize() == num_flagged_surrounding_cells {
                 for c in surrounding_cells {
                     if let Complete(state) = self.dig_cell(c, false) {
                         return Complete(state);
@@ -431,10 +430,8 @@ impl CanBeEngine for Engine {
         for cell in other_cells.iter() {
             cell_states.push(self.board_play_state[cell]);
         }
-        let cell_states_len = cell_states.len();
-        let mut sum_of_chills :u8 = 0;
+        let mut least_chill_value:u8 = 0;
         for state in cell_states {
-            // sum_of_chills +=
             let value =
                 match state {
                 Unchecked => 0,
@@ -446,11 +443,10 @@ impl CanBeEngine for Engine {
                 Cross => 0,
                 Exploded => 8
             };
-            if value > sum_of_chills {
-                sum_of_chills = value;
+            if value > least_chill_value {
+                least_chill_value = value;
             }
         }
-        //sum_of_chills /= cell_states_len as u8;
-        ZeroToEight::from_u8(sum_of_chills)
+        ZeroToEight::from_u8(least_chill_value)
     }
 }

@@ -3,15 +3,11 @@ pub mod window;
 use std::cmp::Ordering;
 use crate::{MouseAction, Component};
 use crossterm::{cursor, queue, style::{self, Color, StyledContent, Stylize}, ErrorKind, Result, terminal};
-use log::info;
 use std::collections::{HashMap, HashSet};
 use std::io;
 use std::io::{stdout, Stdout, Write};
 use std::ops::{Add, Sub};
-use crossterm::style::ContentStyle;
-use crossterm::terminal::ClearType;
 use uuid::Uuid;
-use minesweeper_engine::CompleteState::Win;
 use window::Window;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -72,12 +68,6 @@ impl Add for Point {
     }
 }
 
-// impl From<(usize, usize)> for Point {
-//     fn from(p: (usize, usize)) -> Self {
-//         Point {x: p.0, y: p.1 as}
-//     }
-// }
-
 impl From<(i32, i32)> for Point {
     fn from(p: (i32, i32)) -> Self {
         Point {x: p.0, y: p.1}
@@ -99,13 +89,12 @@ impl Screen {
     // Gets the top-most window for a specific point.
     pub fn handle_click(&mut self, click: MouseAction) -> Result<Vec<ClickAction>> {
         let (x,y) = click.to_point().into();
-        let some_window = self.windows.iter_mut().enumerate().find(|(i,w)| {
+        let some_window = self.windows.iter_mut().enumerate().find(|(_,w)| {
             let size = w.get_size();
             return x >= w.location.x && x < w.location.x + size.width + 1 &&
                 y >= w.location.y && y < w.location.y + size.height + 1;
         });
         if let Some((idx, window)) = some_window {
-            // info!("got hit: {}", window.id);
             if !window.can_move || window.z == 0 {
                 let mut p = click.to_point();
                 p.x -= window.location.x;
@@ -123,14 +112,9 @@ impl Screen {
                     }
                 });
             } else {
-                //info!("Here!: {:?}", click);
                 if let MouseAction::Left(_) = click {
-                    //info!("will do stuff after here...");
-                    //info!("will shuffle: {:?}", self.windows.iter().map(|w| (w.z, w.id)));
                     self.shuffle_windows_back_from_z(0, 0);
-                    //info!("shuffled: {:?}", self.windows.iter().map(|w| (w.z, w.id)));
                     self.windows[idx].z = 0;
-                    //info!("zeroed this window: {:?}", self.windows.iter().map(|w| (w.z, w.id)));
                     self.windows.sort_by(|w1,w2| {
                         return if w1.z > w2.z {
                             Ordering::Greater
@@ -140,10 +124,8 @@ impl Screen {
                             Ordering::Equal
                         }
                     });
-                    //info!("sorted: {:?}", self.windows.iter().map(|w| (w.z, w.id)));
                     self.refresh()?;
                 }
-                // info!("After Here!...");
             }
         }
         return Ok(vec![]);
@@ -229,7 +211,6 @@ impl Screen {
 
     pub fn add(&mut self, window:Window) -> Result<()> {
         let window_id = window.id;
-        // info!("add window: {}", window_id);
         let some_idx = self.windows.binary_search_by_key(&window.z, |w| w.z);
         match some_idx {
             Ok(i) => {
@@ -259,7 +240,6 @@ impl Screen {
     pub fn remove_all(&mut self, window_ids: Vec<Uuid>) -> Result<()> {
         let mut windows_removed = false;
         for window_id in window_ids.iter() {
-            // info!("remove window: {}", window_id);
             let some_idx = self.windows.iter().enumerate().find(|w| w.1.id == *window_id);
             if let Some((idx, _)) = some_idx {
                 let window = self.windows.remove(idx);
