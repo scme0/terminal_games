@@ -1,26 +1,25 @@
 use std::collections::{HashMap, HashSet};
 use crossterm::{Result, style::Color};
-use log::info;
 use minesweeper_engine::engine::Engine;
 use uuid::Uuid;
 use minesweeper_engine::zero_to_eight::ZeroToEight::{Eight, Five, Four, One, Seven, Six, Three, Two, Zero};
 use minesweeper_engine::cell_state::CellState::{Bomb, Checked, Flagged, Unchecked};
 use std::env::current_exe;
 use std::fs::{File, write};
-use serde::{Deserialize, Serialize};
 use minesweeper_engine::game_state::GameState::{Complete, Initialised, Playing};
 use std::path::Path;
 use minesweeper_engine::can_be_engine::CanBeEngine;
 use minesweeper_engine::cell::Cell;
 use minesweeper_engine::cell_state::CellState;
 use minesweeper_engine::complete_state::CompleteState;
-use minesweeper_engine::game_state::GameState;
 use minesweeper_engine::game_stats::GameStats;
 use minesweeper_engine::move_type::MoveType;
 use minesweeper_engine::zero_to_eight::ZeroToEight;
 use tui::screen::{ClickAction, Dimension, GameType, Point};
 use tui::screen::ClickAction::Refresh;
 use tui::screen::window::{Component, MouseAction, UpdateElement};
+use crate::test_engine::TestEngine;
+use crate::top_score::TopScore;
 
 const VISUAL_TEST: bool = false;
 
@@ -32,11 +31,6 @@ pub struct GameView {
     top_score_data: TopScore,
     retry_button_location: Vec<Point>,
     chill_factor: ZeroToEight
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct TopScore {
-    scores: HashMap<GameType,u64>
 }
 
 fn convert_to_wide_char(c: char) -> char {
@@ -336,53 +330,5 @@ impl Component for GameView {
             }
         }
         Ok(click_actions)
-    }
-}
-
-struct TestEngine {
-    updated: bool
-}
-
-impl TestEngine {
-    fn new() -> Self {
-        TestEngine { updated: false }
-    }
-}
-
-impl CanBeEngine for TestEngine {
-    fn get_size(&self) -> (i32, i32) {
-        return (4,3);
-    }
-
-    fn get_board_state(&self) -> (GameStats, HashMap<Cell, CellState>) {
-        let mut map = HashMap::new();
-        if !self.updated {
-            map.insert(Cell{y: 0, x: 0}, Checked(Zero));
-            map.insert(Cell{y: 0, x: 1}, Checked(One));
-            map.insert(Cell{y: 0, x: 2}, Checked(Two));
-            map.insert(Cell{y: 1, x: 0}, Checked(Three));
-            map.insert(Cell{y: 1, x: 1}, Checked(Four));
-            map.insert(Cell{y: 1, x: 2}, Checked(Five));
-            map.insert(Cell{y: 2, x: 0}, Checked(Six));
-            map.insert(Cell{y: 2, x: 1}, Checked(Seven));
-            map.insert(Cell{y: 2, x: 2}, Checked(Eight));
-            map.insert(Cell{y: 3, x: 0}, Unchecked);
-            map.insert(Cell{y: 3, x: 1}, Flagged);
-            map.insert(Cell{y: 3, x: 2}, Bomb);
-        }
-        return (GameStats{game_state: Playing, flags_remaining:33, game_run_time: 999}, map);
-    }
-
-    fn play_move(&mut self, _: MoveType, _: Cell) -> Result<GameState> {
-        self.updated = true;
-        Ok(Playing)
-    }
-
-    fn make_clone(&self) -> Box<dyn CanBeEngine> {
-        Box::from(TestEngine::new())
-    }
-
-    fn get_chill_factor(&mut self, _: Cell) -> Result<ZeroToEight> {
-        Ok(Eight)
     }
 }
