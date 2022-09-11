@@ -9,8 +9,7 @@ use std::ops::{Add, Sub};
 use uuid::Uuid;
 use window::Window;
 use crate::screen::window::{Component, MouseAction};
-use serde::{Serialize,Deserialize};
-
+use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Copy, Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum GameType {

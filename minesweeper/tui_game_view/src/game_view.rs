@@ -188,7 +188,13 @@ impl GameView {
                     0
                 }
             },
-            Some(result) => result.to_owned(),
+            Some(result) => {
+                if result.to_owned() != u64::MAX{
+                    result.to_owned()
+                } else{
+                    0
+                }
+            },
         };
         if score > 999 {
             score = 999;
@@ -211,7 +217,7 @@ impl GameView {
     fn load_best_score(&mut self, current_score: u64) {
         let mut path = current_exe().unwrap();
         path.pop();
-        path.push("top_score.yaml");
+        path.push("minesweeper_top_score.yaml");
         if !Path::new(&path.clone()).exists()
         {
             write(&path.clone(), serde_yaml::to_string(&self.top_score_data).expect("")).expect("")
@@ -225,11 +231,7 @@ impl GameView {
 
         let top_score_for_game_type = match top_score_data.scores.get(&self.game_type) {
             None => {
-                if current_score != u64::MAX {
-                    current_score
-                } else {
-                    0
-                }
+                current_score
             },
             Some(result) => {
                 if current_score < result.to_owned() {
@@ -310,7 +312,6 @@ impl Component for GameView {
                 }
             },
             MouseAction::Move(p) => {
-                info!("Move Point: {:?}",p);
                 self.chill_factor = self.do_action_on_point_on_engine(p, (), |_, e, p| {
                     e.get_chill_factor(Cell{x: p.x, y: p.y})
                 })?;
