@@ -18,18 +18,11 @@ use minesweeper_engine::game_state::GameState;
 use minesweeper_engine::game_stats::GameStats;
 use minesweeper_engine::move_type::MoveType;
 use minesweeper_engine::zero_to_eight::ZeroToEight;
-use tui::screen::{ClickAction, Dimension, Point};
+use tui::screen::{ClickAction, Dimension, GameType, Point};
 use tui::screen::ClickAction::Refresh;
 use tui::screen::window::{Component, MouseAction, UpdateElement};
 
 const VISUAL_TEST: bool = false;
-
-#[derive(Debug, Copy, Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
-pub enum GameType {
-    Easy,
-    Medium,
-    Hard,
-}
 
 pub struct GameView {
     id: Uuid,

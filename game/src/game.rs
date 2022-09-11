@@ -3,9 +3,9 @@ use crossterm::{execute, terminal, Result};
 use std::io::stdout;
 use std::time::{Duration, Instant};
 use log::info;
-use minesweeper_tui_game_view::game_view::{GameType, GameView};
+use minesweeper_tui_game_view::game_view::{GameView};
 use tui::button::ButtonComponent;
-use tui::screen::{ClickAction, Point, Screen};
+use tui::screen::{ClickAction, GameType, Point, Screen};
 use tui::screen::window::{BorderStyle, Window};
 use tui::screen::window::MouseAction::{Double, Drag, Left, Middle, Move, Right};
 
@@ -41,7 +41,7 @@ impl State {
         state.screen.add(Window::new(
             (10, 5).into(),
             99,
-            Box::from(ButtonComponent::new(Box::from("Easy"), (6, 1).into(), ClickAction::Easy)),
+            Box::from(ButtonComponent::new(Box::from("Easy"), (6, 1).into(), ClickAction::Minesweeper(GameType::Easy))),
             BorderStyle::Single,
             Box::default(),
             false,
@@ -50,7 +50,7 @@ impl State {
         state.screen.add(Window::new(
             (20, 5).into(),
             98,
-            Box::from(ButtonComponent::new(Box::from("Medium"), (6, 1).into(), ClickAction::Medium)),
+            Box::from(ButtonComponent::new(Box::from("Medium"), (6, 1).into(), ClickAction::Minesweeper(GameType::Medium))),
             BorderStyle::Single,
             Box::default(),
             false,
@@ -59,7 +59,7 @@ impl State {
         state.screen.add(Window::new(
             (30, 5).into(),
             97,
-            Box::from(ButtonComponent::new(Box::from("Hard"), (6, 1).into(), ClickAction::Hard)),
+            Box::from(ButtonComponent::new(Box::from("Hard"), (6, 1).into(), ClickAction::Minesweeper(GameType::Hard))),
             BorderStyle::Single,
             Box::default(),
             false,
@@ -73,38 +73,14 @@ impl State {
         let mut windows_to_remove = vec![];
         for action in click_actions {
             match action {
-                ClickAction::Easy => {
-                    info!("Starting new easy game of minesweeper");
+                ClickAction::Minesweeper(game_type) => {
+                    info!("Starting new {:?} game of minesweeper", game_type);
                     self.screen.add(Window::new(
                         (5, 10).into(),
                         0,
-                        Box::from(GameView::new(GameType::Easy)),
+                        Box::from(GameView::new(game_type)),
                         BorderStyle::Double,
-                        Box::from("Easy peasy"),
-                        true,
-                        true
-                    ))?;
-                }
-                ClickAction::Medium => {
-                    info!("Starting new medium game of minesweeper");
-                    self.screen.add(Window::new(
-                        (5, 10).into(),
-                        0,
-                        Box::from(GameView::new(GameType::Medium)),
-                        BorderStyle::Double,
-                        Box::from("Medium meh"),
-                        true,
-                        true
-                    ))?;
-                }
-                ClickAction::Hard => {
-                    info!("Starting new hard game of minesweeper");
-                    self.screen.add(Window::new(
-                        (5, 10).into(),
-                        0,
-                        Box::from(GameView::new(GameType::Hard)),
-                        BorderStyle::Double,
-                        Box::from("Hard shmard"),
+                        Box::from(format!("{:?}", game_type)),
                         true,
                         true
                     ))?;

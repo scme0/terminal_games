@@ -9,12 +9,19 @@ use std::ops::{Add, Sub};
 use uuid::Uuid;
 use window::Window;
 use crate::screen::window::{Component, MouseAction};
+use serde::{Serialize,Deserialize};
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum ClickAction {
+
+#[derive(Debug, Copy, Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
+pub enum GameType {
     Easy,
     Medium,
     Hard,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ClickAction {
+    Minesweeper(GameType),
     Quit,
     Close(Uuid),
     Refresh
