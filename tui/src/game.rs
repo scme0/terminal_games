@@ -1,9 +1,9 @@
-use crate::{ButtonComponent, GameComponent, Window};
+use crate::{ButtonComponent, GameView, Window};
 use crossterm::event::{read, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, MouseButton, MouseEvent, MouseEventKind, poll};
 use crossterm::{execute, terminal, Result};
 use std::io::stdout;
 use std::time::{Duration, Instant};
-use crate::game_screen::GameType;
+use crate::game_view::GameType;
 use crate::MouseAction::{Double, Left, Middle, Right, Drag, Move};
 use crate::screen::{ClickAction, Point, Screen};
 use crate::screen::window::BorderStyle;
@@ -76,7 +76,7 @@ impl State {
                     self.screen.add(Window::new(
                         (5, 10).into(),
                         0,
-                        Box::from(GameComponent::new(GameType::Easy)),
+                        Box::from(GameView::new(GameType::Easy)),
                         BorderStyle::Double,
                         Box::from("Easy peasy"),
                         true,
@@ -87,7 +87,7 @@ impl State {
                     self.screen.add(Window::new(
                         (5, 10).into(),
                         0,
-                        Box::from(GameComponent::new(GameType::Medium)),
+                        Box::from(GameView::new(GameType::Medium)),
                         BorderStyle::Double,
                         Box::from("Medium meh"),
                         true,
@@ -98,7 +98,7 @@ impl State {
                     self.screen.add(Window::new(
                         (5, 10).into(),
                         0,
-                        Box::from(GameComponent::new(GameType::Hard)),
+                        Box::from(GameView::new(GameType::Hard)),
                         BorderStyle::Double,
                         Box::from("Hard shmard"),
                         true,

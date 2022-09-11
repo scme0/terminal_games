@@ -31,7 +31,7 @@ pub enum GameType {
     Hard,
 }
 
-pub struct GameComponent {
+pub struct GameView {
     id: Uuid,
     engine: Box<dyn CanBeEngine>,
     engine_size: Dimension,
@@ -50,8 +50,8 @@ fn convert_to_wide_char(c: char) -> char {
     char::from_u32(c as u32 + 0xFEE0).unwrap()
 }
 
-impl GameComponent {
-    pub fn new(game_type: GameType) -> GameComponent {
+impl GameView {
+    pub fn new(game_type: GameType) -> GameView {
         let engine: Box<dyn CanBeEngine> = match VISUAL_TEST {
             true => Box::from(TestEngine::new()),
             false => Box::from(match game_type {
@@ -61,7 +61,7 @@ impl GameComponent {
             })
         };
         let engine_size: Dimension =  engine.get_size().into();
-        GameComponent { id: Uuid::new_v4(), engine, engine_size, game_type, top_score_data: TopScore{scores:HashMap::new()}, retry_button_location: vec![], chill_factor: Zero }
+        GameView { id: Uuid::new_v4(), engine, engine_size, game_type, top_score_data: TopScore{scores:HashMap::new()}, retry_button_location: vec![], chill_factor: Zero }
     }
 
     fn reset(&mut self) {
@@ -94,7 +94,7 @@ impl GameComponent {
 
         let emoji =         match game_stats.game_state {
             Initialised => '🫥',
-            Playing => GameComponent::get_emoji_from_chill_factor(self.chill_factor),
+            Playing => GameView::get_emoji_from_chill_factor(self.chill_factor),
             Complete(result) =>
                 match result {
                     CompleteState::Win => '🥳',
@@ -102,7 +102,7 @@ impl GameComponent {
                 }
         };
         let emoji_point = ((size.width/2)-1,0).into();
-        GameComponent::push_stat_char(prior_updates, &mut stat_line_points, emoji_point, emoji);
+        GameView::push_stat_char(prior_updates, &mut stat_line_points, emoji_point, emoji);
 
         // draw flag count
         let flag_point = (((emoji_point.x / 2) - 1 - 4),emoji_point.y).into();
@@ -111,9 +111,9 @@ impl GameComponent {
             flags = 999;
         }
         let flag_string = format!("{:03}", flags);
-        GameComponent::push_stat_char(prior_updates, &mut stat_line_points, flag_point,  '🚩');
+        GameView::push_stat_char(prior_updates, &mut stat_line_points, flag_point, '🚩');
         for (i,char) in flag_string.chars().enumerate() {
-            GameComponent::push_stat_char(prior_updates, &mut stat_line_points, flag_point + (((i+1) as i32)*2,0).into(), convert_to_wide_char(char));
+            GameView::push_stat_char(prior_updates, &mut stat_line_points, flag_point + (((i+1) as i32)*2, 0).into(), convert_to_wide_char(char));
         }
 
         // draw clock
@@ -123,10 +123,10 @@ impl GameComponent {
             seconds = 999;
         }
         let seconds_string = format!("{:03}", seconds);
-        GameComponent::push_stat_char(prior_updates, &mut stat_line_points, clock_point,  '🕑');
+        GameView::push_stat_char(prior_updates, &mut stat_line_points, clock_point, '🕑');
 
         for (i,char) in seconds_string.chars().enumerate() {
-            GameComponent::push_stat_char(prior_updates, &mut stat_line_points, clock_point + (((i+1) as i32)*2,0).into(),  convert_to_wide_char(char));
+            GameView::push_stat_char(prior_updates, &mut stat_line_points, clock_point + (((i+1) as i32)*2, 0).into(), convert_to_wide_char(char));
         }
 
         for left_over_point in stat_line_points.iter(){
@@ -280,7 +280,7 @@ impl GameComponent {
     }
 }
 
-impl Component for GameComponent {
+impl Component for GameView {
     fn get_id(&self) -> Uuid {
         self.id
     }

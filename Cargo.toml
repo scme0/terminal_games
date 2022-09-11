@@ -2,5 +2,5 @@
 
 members = [
     "tui",
-    "engine",
+    "minesweeper/engine",
 ]

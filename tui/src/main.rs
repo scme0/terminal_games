@@ -1,11 +1,11 @@
 mod button;
 mod game;
-mod game_screen;
+mod game_view;
 mod screen;
 
 use std::io;
 use crate::button::ButtonComponent;
-use crate::game_screen::GameComponent;
+use crate::game_view::GameView;
 use crate::screen::window::{MouseAction, Component, UpdateElement, Window};
 use crossterm::{ErrorKind, Result};
 use flexi_logger::{FileSpec, FlexiLoggerError, Logger};
