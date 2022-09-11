@@ -2,6 +2,7 @@ use crossterm::event::{read, DisableMouseCapture, EnableMouseCapture, Event, Key
 use crossterm::{execute, terminal, Result};
 use std::io::stdout;
 use std::time::{Duration, Instant};
+use log::info;
 use minesweeper_tui_game_view::game_view::{GameType, GameView};
 use tui::button::ButtonComponent;
 use tui::screen::{ClickAction, Point, Screen};
@@ -73,6 +74,7 @@ impl State {
         for action in click_actions {
             match action {
                 ClickAction::Easy => {
+                    info!("Starting new easy game of minesweeper");
                     self.screen.add(Window::new(
                         (5, 10).into(),
                         0,
@@ -84,6 +86,7 @@ impl State {
                     ))?;
                 }
                 ClickAction::Medium => {
+                    info!("Starting new medium game of minesweeper");
                     self.screen.add(Window::new(
                         (5, 10).into(),
                         0,
@@ -95,6 +98,7 @@ impl State {
                     ))?;
                 }
                 ClickAction::Hard => {
+                    info!("Starting new hard game of minesweeper");
                     self.screen.add(Window::new(
                         (5, 10).into(),
                         0,
@@ -106,12 +110,14 @@ impl State {
                     ))?;
                 }
                 ClickAction::Quit => {
+                    info!("Quitting Application");
                     return Ok(GameRunState::Close);
                 }
                 ClickAction::Close(window_id) => {
                     windows_to_remove.push(window_id);
                 }
                 ClickAction::Refresh => {
+                    info!("Screen refresh requested");
                     self.screen.refresh()?;
                 }
             }
@@ -130,7 +136,6 @@ impl State {
         let mut y = event.row as i32;
         let some_click = match event.kind {
             MouseEventKind::Down(button) => {
-                // info!("down! {}, {}, {:?}", x, y, button);
                 match button {
                     MouseButton::Left => {
                         let point = (x,y).into();
