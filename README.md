@@ -10,4 +10,4 @@ Trying to emulate the original game in terminal using emojies and unicode charac
 
 ## snake
 
-<Work in progress>
+_Work in progress_
