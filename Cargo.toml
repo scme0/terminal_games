@@ -4,5 +4,7 @@ members = [
     "game",
     "tui",
     "minesweeper/engine",
-    "minesweeper/tui_game_view"
+    "minesweeper/tui_game_view",
+    "snake/engine",
+    "snake/tui_game_view"
 ]

@@ -1,11 +1,11 @@
 [package]
 name = "minesweeper_tui_game_view"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 
 [dependencies]
-minesweeper_engine = {path = "../engine", version = "0.1.0"}
-tui = {path = "../../tui", version = "0.1.0"}
+minesweeper_engine = {path = "../engine", version = "1.0.0"}
+tui = {path = "../../tui", version = "1.0.0"}
 bitflags = "1.3"
 cassowary = "0.3"
 unicode-segmentation = "1.2"

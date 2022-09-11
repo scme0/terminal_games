@@ -222,7 +222,7 @@ checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
 
 [[package]]
 name = "minesweeper_engine"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "crossterm",
  "log",
@@ -232,7 +232,7 @@ dependencies = [
 
 [[package]]
 name = "minesweeper_tui_game_view"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "argh",
  "bitflags",
@@ -469,6 +469,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2fd0db749597d91ff862fd1d55ea87f7855a744a8425a64695b6fca237d1dad1"
 
 [[package]]
+name = "snake_engine"
+version = "0.0.1"
+
+[[package]]
+name = "snake_tui_game_view"
+version = "0.0.1"
+
+[[package]]
 name = "sorted-list"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -487,7 +495,7 @@ dependencies = [
 
 [[package]]
 name = "terminal_games"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "argh",
  "bitflags",
@@ -547,7 +555,7 @@ checksum = "42657b1a6f4d817cda8e7a0ace261fe0cc946cf3a80314390b22cc61ae080792"
 
 [[package]]
 name = "tui"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "argh",
  "bitflags",
