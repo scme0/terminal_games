@@ -49,14 +49,19 @@ impl Engine {
         }
     }
 
-    pub(crate) fn win_game(&mut self) {
+    pub fn is_game_won(&self) -> bool {
+        return self.checked_cells + self.flagged_cells == self.total_cells &&
+            self.flagged_cells == self.bomb_count;
+    }
+
+    pub fn win_game(&mut self) {
         if let Some(start_instant) = self.start_instant{
             self.game_complete_time = start_instant.elapsed().as_secs();
         }
         self.game_state = Complete(Win);
     }
 
-    pub(crate) fn lose_game(&mut self) {
+    pub fn lose_game(&mut self) {
         if let Some(start_instant) = self.start_instant{
             self.game_complete_time = start_instant.elapsed().as_secs();
         }
@@ -206,7 +211,7 @@ impl Engine {
             Unchecked => {
                 self.board_play_state.insert(cell,Flagged);
                 self.flagged_cells += 1;
-                if self.checked_cells + self.flagged_cells == self.total_cells {
+                if self.is_game_won() {
                     self.win_game();
                     return Complete(Win);
                 } else {
@@ -237,7 +242,7 @@ impl Engine {
                             self.reveal_safe_patch(cell).expect("");
                         }
                         self.checked_cells += 1;
-                        if self.checked_cells + self.flagged_cells == self.total_cells {
+                        if self.is_game_won() {
                             self.win_game();
                             return Complete(Win);
                         } else {
