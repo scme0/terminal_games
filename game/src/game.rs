@@ -1,13 +1,14 @@
-use crossterm::event::{read, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, MouseButton, MouseEvent, MouseEventKind, poll};
-use crossterm::{execute, terminal, Result};
+use crossterm::event::{DisableMouseCapture, EnableMouseCapture, Event, KeyCode, MouseButton, MouseEvent, MouseEventKind, poll, read};
+use crossterm::{execute, Result, terminal};
 use std::io::stdout;
 use std::time::{Duration, Instant};
 use log::info;
-use minesweeper_tui_game_view::game_view::{GameView};
-use tui::button::ButtonComponent;
+use minesweeper_tui_game_view::game_view::GameView;
 use tui::screen::{ClickAction, GameType, Point, Screen};
-use tui::screen::window::{BorderStyle, Window};
-use tui::screen::window::MouseAction::{Double, Drag, Left, Middle, Move, Right};
+use tui::screen::border_style::BorderStyle;
+use tui::screen::window::Window;
+use tui::screen::mouse_action::MouseAction::{Double, Drag, Left, Middle, Move, Right};
+use tui::screen::window::button::ButtonComponent;
 
 #[derive(PartialEq)]
 enum GameRunState {

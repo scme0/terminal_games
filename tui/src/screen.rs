@@ -1,15 +1,23 @@
 pub mod window;
+pub mod mouse_action;
+pub mod component;
+pub mod border_style;
+pub mod update_element;
+mod border_elements;
+mod has_close_action;
 
 use std::cmp::Ordering;
-use crossterm::{cursor, queue, style::{self, Color, StyledContent, Stylize}, ErrorKind, Result, terminal};
+use crossterm::{cursor, ErrorKind, queue, Result, style::{self, Color, StyledContent, Stylize}, terminal};
 use std::collections::{HashMap, HashSet};
 use std::io;
 use std::io::{stdout, Stdout, Write};
 use std::ops::{Add, Sub};
 use uuid::Uuid;
 use window::Window;
-use crate::screen::window::{Component, MouseAction};
-use serde::{Serialize, Deserialize};
+use component::Component;
+use serde::{Deserialize, Serialize};
+use mouse_action::MouseAction;
+use crate::screen::has_close_action::HasCloseAndRefreshActions;
 
 #[derive(Debug, Copy, Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum GameType {
@@ -24,6 +32,16 @@ pub enum ClickAction {
     Quit,
     Close(Uuid),
     Refresh
+}
+
+impl HasCloseAndRefreshActions for ClickAction {
+    fn get_close_action(id: Uuid) -> Self {
+        ClickAction::Close(id)
+    }
+
+    fn get_refresh_action() -> Self {
+        ClickAction::Refresh
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -83,7 +101,7 @@ impl From<(i32, i32)> for Point {
 pub struct Screen {
     width: i32,
     height: i32,
-    windows: Vec<Window>,
+    windows: Vec<Window<ClickAction>>,
     buffer: HashMap<Uuid, HashMap<Point, StyledContent<String>>>
 }
 
@@ -215,7 +233,7 @@ impl Screen {
         Ok(())
     }
 
-    pub fn add(&mut self, window:Window) -> Result<()> {
+    pub fn add(&mut self, window:Window<ClickAction>) -> Result<()> {
         let window_id = window.id;
         let some_idx = self.windows.binary_search_by_key(&window.z, |w| w.z);
         match some_idx {

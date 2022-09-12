@@ -17,7 +17,9 @@ use minesweeper_engine::move_type::MoveType;
 use minesweeper_engine::zero_to_eight::ZeroToEight;
 use tui::screen::{ClickAction, Dimension, GameType, Point};
 use tui::screen::ClickAction::Refresh;
-use tui::screen::window::{Component, MouseAction, UpdateElement};
+use tui::screen::component::Component;
+use tui::screen::mouse_action::MouseAction;
+use tui::screen::update_element::UpdateElement;
 use crate::test_engine::TestEngine;
 use crate::top_score::TopScore;
 
@@ -271,7 +273,7 @@ impl GameView {
     }
 }
 
-impl Component for GameView {
+impl Component<ClickAction> for GameView {
     fn get_id(&self) -> Uuid {
         self.id
     }
