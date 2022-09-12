@@ -1,10 +1,10 @@
 use crossterm::Result;
 use uuid::Uuid;
 use crate::screen::{Dimension};
-use crate::screen::component::Component;
-use crate::screen::has_close_action::HasCloseAndRefreshActions;
-use crate::screen::mouse_action::MouseAction;
-use crate::screen::update_element::UpdateElement;
+use crate::screen::window::component::Component;
+use crate::screen::window::has_close_action::HasCloseAndRefreshActions;
+use crate::screen::window::mouse_action::MouseAction;
+use crate::screen::window::update_element::UpdateElement;
 
 #[derive(Debug, Clone)]
 pub struct ButtonComponent<T: HasCloseAndRefreshActions + PartialEq + Clone> {

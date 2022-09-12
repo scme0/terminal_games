@@ -1,10 +1,4 @@
 pub mod window;
-pub mod mouse_action;
-pub mod component;
-pub mod border_style;
-pub mod update_element;
-mod border_elements;
-pub mod has_close_action;
 
 use std::cmp::Ordering;
 use crossterm::{cursor, ErrorKind, queue, Result, style::{self, Color, StyledContent, Stylize}, terminal};
@@ -14,9 +8,9 @@ use std::io::{stdout, Stdout, Write};
 use std::ops::{Add, Sub};
 use uuid::Uuid;
 use window::Window;
-use component::Component;
-use mouse_action::MouseAction;
-pub use crate::screen::has_close_action::HasCloseAndRefreshActions;
+use crate::screen::window::component::Component;
+use crate::screen::window::has_close_action::HasCloseAndRefreshActions;
+use crate::screen::window::mouse_action::MouseAction;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Dimension {

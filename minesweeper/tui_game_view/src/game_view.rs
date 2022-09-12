@@ -19,9 +19,9 @@ use minesweeper_engine::game_stats::GameStats;
 use minesweeper_engine::move_type::MoveType;
 use minesweeper_engine::zero_to_eight::ZeroToEight;
 use tui::screen::{Dimension, Point};
-use tui::screen::component::Component;
-use tui::screen::mouse_action::MouseAction;
-use tui::screen::update_element::UpdateElement;
+use tui::screen::window::component::Component;
+use tui::screen::window::mouse_action::MouseAction;
+use tui::screen::window::update_element::UpdateElement;
 use crate::test_engine::TestEngine;
 use crate::top_score::TopScore;
 

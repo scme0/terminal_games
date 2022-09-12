@@ -1,4 +1,4 @@
-use crate::screen::border_style::BorderStyle;
+use crate::screen::window::border_style::BorderStyle;
 
 pub struct BorderElements {
     pub top_left: char,

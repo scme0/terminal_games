@@ -1,16 +1,22 @@
 pub mod button;
+mod border_elements;
+pub mod border_style;
+pub mod component;
+pub mod has_close_action;
+pub mod mouse_action;
+pub mod update_element;
 
 use crossterm::Result;
 use std::cmp::Ordering;
 use std::fmt::Debug;
 use uuid::Uuid;
 use crate::screen::{Dimension, Point};
-use crate::screen::border_elements::BorderElements;
-use crate::screen::border_style::BorderStyle;
-use crate::screen::component::Component;
-use crate::screen::has_close_action::HasCloseAndRefreshActions;
-use crate::screen::mouse_action::MouseAction;
-use crate::screen::update_element::UpdateElement;
+use crate::screen::window::border_elements::BorderElements;
+use crate::screen::window::border_style::BorderStyle;
+use crate::screen::window::component::Component;
+use crate::screen::window::has_close_action::HasCloseAndRefreshActions;
+use crate::screen::window::mouse_action::MouseAction;
+use crate::screen::window::update_element::UpdateElement;
 
 #[derive(Debug)]
 pub struct Window<T: HasCloseAndRefreshActions + PartialEq + Clone> {

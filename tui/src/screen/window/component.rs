@@ -1,9 +1,9 @@
 use std::fmt::{Debug, Formatter};
 use uuid::Uuid;
 use crate::screen::{Dimension};
-use crate::screen::has_close_action::HasCloseAndRefreshActions;
-use crate::screen::mouse_action::MouseAction;
-use crate::screen::update_element::UpdateElement;
+use crate::screen::window::has_close_action::HasCloseAndRefreshActions;
+use crate::screen::window::mouse_action::MouseAction;
+use crate::screen::window::update_element::UpdateElement;
 
 pub trait Component<T: HasCloseAndRefreshActions + PartialEq + Clone> {
     fn get_id(&self) -> Uuid;

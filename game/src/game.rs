@@ -7,10 +7,10 @@ use game_actions::click_action::ClickAction;
 use game_actions::game_type::GameType;
 use minesweeper_tui_game_view::game_view::GameView;
 use tui::screen::{Point, Screen};
-use tui::screen::border_style::BorderStyle;
+use tui::screen::window::border_style::BorderStyle;
 use tui::screen::window::Window;
-use tui::screen::mouse_action::MouseAction::{Double, Drag, Left, Middle, Move, Right};
 use tui::screen::window::button::ButtonComponent;
+use tui::screen::window::mouse_action::MouseAction::{Double, Drag, Left, Middle, Move, Right};
 
 #[derive(PartialEq)]
 enum GameRunState {

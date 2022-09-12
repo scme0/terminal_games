@@ -1,5 +1,5 @@
 use uuid::Uuid;
-use tui::screen::HasCloseAndRefreshActions;
+use tui::screen::window::has_close_action::HasCloseAndRefreshActions;
 use crate::game_type::GameType;
 
 #[derive(Debug, Clone, PartialEq)]
