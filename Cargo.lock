@@ -127,6 +127,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "game_actions"
+version = "1.0.0"
+dependencies = [
+ "serde",
+ "tui",
+ "uuid",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -239,6 +248,7 @@ dependencies = [
  "cassowary",
  "crossterm",
  "flexi_logger",
+ "game_actions",
  "log",
  "minesweeper_engine",
  "rand",
@@ -502,6 +512,7 @@ dependencies = [
  "cassowary",
  "crossterm",
  "flexi_logger",
+ "game_actions",
  "log",
  "minesweeper_engine",
  "minesweeper_tui_game_view",

@@ -4,7 +4,7 @@ pub mod component;
 pub mod border_style;
 pub mod update_element;
 mod border_elements;
-mod has_close_action;
+pub mod has_close_action;
 
 use std::cmp::Ordering;
 use crossterm::{cursor, ErrorKind, queue, Result, style::{self, Color, StyledContent, Stylize}, terminal};
@@ -15,34 +15,8 @@ use std::ops::{Add, Sub};
 use uuid::Uuid;
 use window::Window;
 use component::Component;
-use serde::{Deserialize, Serialize};
 use mouse_action::MouseAction;
-use crate::screen::has_close_action::HasCloseAndRefreshActions;
-
-#[derive(Debug, Copy, Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
-pub enum GameType {
-    Easy,
-    Medium,
-    Hard,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum ClickAction {
-    Minesweeper(GameType),
-    Quit,
-    Close(Uuid),
-    Refresh
-}
-
-impl HasCloseAndRefreshActions for ClickAction {
-    fn get_close_action(id: Uuid) -> Self {
-        ClickAction::Close(id)
-    }
-
-    fn get_refresh_action() -> Self {
-        ClickAction::Refresh
-    }
-}
+pub use crate::screen::has_close_action::HasCloseAndRefreshActions;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Dimension {
@@ -98,20 +72,20 @@ impl From<(i32, i32)> for Point {
     }
 }
 
-pub struct Screen {
+pub struct Screen<T: HasCloseAndRefreshActions + PartialEq + Clone> {
     width: i32,
     height: i32,
-    windows: Vec<Window<ClickAction>>,
+    windows: Vec<Window<T>>,
     buffer: HashMap<Uuid, HashMap<Point, StyledContent<String>>>
 }
 
-impl Screen {
+impl<T: HasCloseAndRefreshActions + PartialEq + Clone> Screen<T> {
     pub fn new(width: i32, height: i32) -> Self{
         Screen {windows: vec![], buffer: HashMap::new(), width, height}
     }
 
     // Gets the top-most window for a specific point.
-    pub fn handle_click(&mut self, click: MouseAction) -> Result<Vec<ClickAction>> {
+    pub fn handle_click(&mut self, click: MouseAction) -> Result<Vec<T>> {
         let (x,y) = click.to_point().into();
         let some_window = self.windows.iter_mut().enumerate().find(|(_,w)| {
             let size = w.get_size();
@@ -173,7 +147,7 @@ impl Screen {
                 None => Err(ErrorKind::new(io::ErrorKind::Other, "Should always be Some here!"))?
             };
             for (point, value) in buffer.iter() {
-                Screen::draw_value(&mut stdout, &mut point_map, *point, value.clone())?;
+                Screen::<T>::draw_value(&mut stdout, &mut point_map, *point, value.clone())?;
             }
         }
         queue!(stdout,cursor::Hide)?;
@@ -216,7 +190,7 @@ impl Screen {
 
                 let point = (absolute_x, absolute_y).into();
                 buffer.insert(point, value.clone());
-                Screen::draw_value(&mut stdout,&mut point_map, point, value)?;
+                Screen::<T>::draw_value(&mut stdout,&mut point_map, point, value)?;
             }
 
             for (key, _) in buffer {
@@ -233,7 +207,7 @@ impl Screen {
         Ok(())
     }
 
-    pub fn add(&mut self, window:Window<ClickAction>) -> Result<()> {
+    pub fn add(&mut self, window:Window<T>) -> Result<()> {
         let window_id = window.id;
         let some_idx = self.windows.binary_search_by_key(&window.z, |w| w.z);
         match some_idx {

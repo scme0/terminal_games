@@ -3,8 +3,10 @@ use crossterm::{execute, Result, terminal};
 use std::io::stdout;
 use std::time::{Duration, Instant};
 use log::info;
+use game_actions::click_action::ClickAction;
+use game_actions::game_type::GameType;
 use minesweeper_tui_game_view::game_view::GameView;
-use tui::screen::{ClickAction, GameType, Point, Screen};
+use tui::screen::{Point, Screen};
 use tui::screen::border_style::BorderStyle;
 use tui::screen::window::Window;
 use tui::screen::mouse_action::MouseAction::{Double, Drag, Left, Middle, Move, Right};
@@ -17,7 +19,7 @@ enum GameRunState {
 }
 
 struct State {
-    screen: Screen,
+    screen: Screen<ClickAction>,
     last_left_click: Point,
     last_left_click_time: Instant
 }

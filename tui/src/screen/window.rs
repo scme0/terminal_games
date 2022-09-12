@@ -13,7 +13,7 @@ use crate::screen::mouse_action::MouseAction;
 use crate::screen::update_element::UpdateElement;
 
 #[derive(Debug)]
-pub struct Window<T: HasCloseAndRefreshActions> {
+pub struct Window<T: HasCloseAndRefreshActions + PartialEq + Clone> {
     pub id: Uuid,
     pub z: i32,
     pub location: Point,
@@ -230,7 +230,7 @@ impl<T: HasCloseAndRefreshActions + PartialEq + Clone> Component<T> for Window<T
     }
 }
 
-fn calculate_relative_x_y<T: HasCloseAndRefreshActions>(window: &Window<T>, point: Point) -> Point{
+fn calculate_relative_x_y<T: HasCloseAndRefreshActions + PartialEq + Clone>(window: &Window<T>, point: Point) -> Point{
     match window.border_style != BorderStyle::None {
         true => {
             (point.x - 2, point.y - 1).into()

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
-use tui::screen::GameType;
+use game_actions::game_type::GameType;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TopScore {
