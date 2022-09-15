@@ -1,19 +1,22 @@
 use crossterm::Result;
 use uuid::Uuid;
-use crate::screen::{ClickAction, Dimension};
-use crate::screen::window::{Component, MouseAction, UpdateElement};
+use crate::screen::dimension::Dimension;
+use crate::screen::window::component::Component;
+use crate::screen::window::has_close_action::HasCloseAndRefreshActions;
+use crate::screen::window::mouse_action::MouseAction;
+use crate::screen::window::update_element::UpdateElement;
 
 #[derive(Debug, Clone)]
-pub struct ButtonComponent {
+pub struct ButtonComponent<T: HasCloseAndRefreshActions + PartialEq + Clone> {
     id: Uuid,
     label: Box<str>,
     size: Dimension,
     changed: bool,
-    pub click_action: ClickAction,
+    pub click_action: T,
 }
 
-impl ButtonComponent {
-    pub fn new(label: Box<str>, size: Dimension, click_action: ClickAction) -> Self {
+impl<T: HasCloseAndRefreshActions + PartialEq + Clone> ButtonComponent<T> {
+    pub fn new(label: Box<str>, size: Dimension, click_action: T) -> Self {
         return ButtonComponent {
             id: Uuid::new_v4(),
             label,
@@ -24,7 +27,7 @@ impl ButtonComponent {
     }
 }
 
-impl Component for ButtonComponent {
+impl<T: HasCloseAndRefreshActions + PartialEq + Clone> Component<T> for ButtonComponent<T> {
     fn get_id(&self) -> Uuid {
         self.id
     }
@@ -33,7 +36,7 @@ impl Component for ButtonComponent {
         return self.size;
     }
 
-    fn get_updates(&mut self) -> Result<Vec<UpdateElement>> {
+    fn get_state(&mut self) -> Result<Vec<UpdateElement>> {
         let mut updates = vec![];
         if self.changed {
             let mut y = 0;
@@ -60,7 +63,11 @@ impl Component for ButtonComponent {
         return Ok(updates);
     }
 
-    fn handle_click(&mut self, click: MouseAction) -> Result<Vec<ClickAction>> {
+    fn get_updates(&mut self) -> Result<Vec<UpdateElement>> {
+        self.get_state()
+    }
+
+    fn handle_click(&mut self, click: MouseAction) -> Result<Vec<T>> {
         Ok(match click {
             MouseAction::Left(_) => vec![self.click_action.clone()],
             _ => vec![]

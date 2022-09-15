@@ -6,5 +6,6 @@ members = [
     "minesweeper/engine",
     "minesweeper/tui_game_view",
     "snake/engine",
-    "snake/tui_game_view"
+    "snake/tui_game_view",
+    "game_actions"
 ]

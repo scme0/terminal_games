@@ -1,99 +1,33 @@
 pub mod window;
+pub mod dimension;
+pub mod point;
 
 use std::cmp::Ordering;
-use crossterm::{cursor, queue, style::{self, Color, StyledContent, Stylize}, ErrorKind, Result, terminal};
+use crossterm::{cursor, ErrorKind, queue, Result, style::{self, Color, StyledContent, Stylize}, terminal};
 use std::collections::{HashMap, HashSet};
 use std::io;
 use std::io::{stdout, Stdout, Write};
-use std::ops::{Add, Sub};
 use uuid::Uuid;
 use window::Window;
-use crate::screen::window::{Component, MouseAction};
-use serde::{Serialize, Deserialize};
+use crate::screen::point::Point;
+use crate::screen::window::component::Component;
+use crate::screen::window::has_close_action::HasCloseAndRefreshActions;
+use crate::screen::window::mouse_action::MouseAction;
 
-#[derive(Debug, Copy, Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
-pub enum GameType {
-    Easy,
-    Medium,
-    Hard,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum ClickAction {
-    Minesweeper(GameType),
-    Quit,
-    Close(Uuid),
-    Refresh
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Dimension {
-    pub width: i32,
-    pub height: i32
-}
-
-impl From<Dimension> for (i32, i32) {
-    fn from(c: Dimension) -> (i32, i32) {
-        let Dimension {width, height} = c;
-        return (width, height);
-    }
-}
-
-impl From<(i32, i32)> for Dimension {
-    fn from(p: (i32, i32)) -> Self {
-        Dimension {width: p.0, height: p.1}
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Point {
-    pub x: i32,
-    pub y: i32
-}
-
-impl From<Point> for (i32, i32) {
-    fn from(c: Point) -> (i32, i32) {
-        let Point {x, y} = c;
-        return (x, y);
-    }
-}
-
-impl Sub for Point {
-    type Output = Point;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        (self.x - rhs.x, self.y - rhs.y).into()
-    }
-}
-
-impl Add for Point {
-    type Output = Point;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        (self.x + rhs.x, self.y + rhs.y).into()
-    }
-}
-
-impl From<(i32, i32)> for Point {
-    fn from(p: (i32, i32)) -> Self {
-        Point {x: p.0, y: p.1}
-    }
-}
-
-pub struct Screen {
+pub struct Screen<T: HasCloseAndRefreshActions + PartialEq + Clone> {
     width: i32,
     height: i32,
-    windows: Vec<Window>,
+    windows: Vec<Window<T>>,
     buffer: HashMap<Uuid, HashMap<Point, StyledContent<String>>>
 }
 
-impl Screen {
+impl<T: HasCloseAndRefreshActions + PartialEq + Clone> Screen<T> {
     pub fn new(width: i32, height: i32) -> Self{
         Screen {windows: vec![], buffer: HashMap::new(), width, height}
     }
 
     // Gets the top-most window for a specific point.
-    pub fn handle_click(&mut self, click: MouseAction) -> Result<Vec<ClickAction>> {
+    pub fn handle_click(&mut self, click: MouseAction) -> Result<Vec<T>> {
         let (x,y) = click.to_point().into();
         let some_window = self.windows.iter_mut().enumerate().find(|(_,w)| {
             let size = w.get_size();
@@ -155,7 +89,7 @@ impl Screen {
                 None => Err(ErrorKind::new(io::ErrorKind::Other, "Should always be Some here!"))?
             };
             for (point, value) in buffer.iter() {
-                Screen::draw_value(&mut stdout, &mut point_map, *point, value.clone())?;
+                Screen::<T>::draw_value(&mut stdout, &mut point_map, *point, value.clone())?;
             }
         }
         queue!(stdout,cursor::Hide)?;
@@ -177,12 +111,15 @@ impl Screen {
                 None => Err(ErrorKind::new(io::ErrorKind::Other, "Should always be Some here!"))?
             };
 
-            if window.refresh {
+            let window_updates = if window.refresh {
                 buffer.clear();
                 refresh = true;
-            }
+                window.get_state()?
+            } else {
+                window.get_updates()?
+            };
             let window_size = window.get_size();
-            for update_element in window.get_updates()?.iter(){
+            for update_element in window_updates.iter(){
                 if update_element.point.y > window_size.height || update_element.point.x > window_size.width {
                     continue;
                 }
@@ -198,7 +135,7 @@ impl Screen {
 
                 let point = (absolute_x, absolute_y).into();
                 buffer.insert(point, value.clone());
-                Screen::draw_value(&mut stdout,&mut point_map, point, value)?;
+                Screen::<T>::draw_value(&mut stdout,&mut point_map, point, value)?;
             }
 
             for (key, _) in buffer {
@@ -215,7 +152,7 @@ impl Screen {
         Ok(())
     }
 
-    pub fn add(&mut self, window:Window) -> Result<()> {
+    pub fn add(&mut self, window:Window<T>) -> Result<()> {
         let window_id = window.id;
         let some_idx = self.windows.binary_search_by_key(&window.z, |w| w.z);
         match some_idx {

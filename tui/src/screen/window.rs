@@ -1,116 +1,42 @@
-use crossterm::style::Color;
+pub mod button;
+mod border_elements;
+pub mod border_style;
+pub mod component;
+pub mod has_close_action;
+pub mod mouse_action;
+pub mod update_element;
+
 use crossterm::Result;
 use std::cmp::Ordering;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::Debug;
 use uuid::Uuid;
-use crate::screen::{ClickAction, Dimension, Point};
-use crate::screen::ClickAction::{Close, Refresh};
-
-#[derive(Debug, Copy, Clone)]
-pub struct UpdateElement {
-    pub point: Point,
-    pub value: char,
-    pub fg: Option<Color>,
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum MouseAction {
-    Middle(Point),
-    Left(Point),
-    Right(Point),
-    Double(Point),
-    Move(Point),
-    Drag(Point, Point)
-}
-
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum BorderStyle {
-    None,
-    Double,
-    Single,
-    Dotted
-}
-
-struct BorderElements {
-    top_left: char,
-    top_right: char,
-    bottom_left: char,
-    bottom_right: char,
-    horizontal: char,
-    vertical: char,
-    label_frame_left: char,
-    label_frame_right: char
-}
-
-impl BorderElements {
-    fn new(border_style: BorderStyle) -> Self {
-        match border_style {
-            BorderStyle::Double => BorderElements { top_left: '╔', top_right: '╗', bottom_left: '╚', bottom_right: '╝', horizontal: '═', vertical: '║', label_frame_left: '╡', label_frame_right: '╞'},
-            BorderStyle::Single => BorderElements { top_left: '┏', top_right: '┓', bottom_left: '┗', bottom_right: '┛', horizontal: '━', vertical: '┃', label_frame_left: '┫', label_frame_right: '┣'},
-            BorderStyle::Dotted => BorderElements { top_left: '┏', top_right: '┓', bottom_left: '┗', bottom_right: '┛', horizontal: '┅', vertical: '┇', label_frame_left: '╏', label_frame_right: '╏'},
-            BorderStyle::None => BorderElements { top_left: '\0', top_right: '\0', bottom_left: '\0', bottom_right: '\0', horizontal: '\0', vertical: '\0', label_frame_left: '\0', label_frame_right: '\0'},
-        }
-    }
-}
-
-impl MouseAction {
-    pub fn to_point(&self) -> Point {
-        match *self {
-            MouseAction::Middle(p) => p,
-            MouseAction::Left(p) => p,
-            MouseAction::Right(p) => p,
-            MouseAction::Double(p) => p,
-            MouseAction::Move(p) => p,
-            MouseAction::Drag(from, _) => from,
-        }
-    }
-}
-
-impl Display for MouseAction {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            MouseAction::Middle(point) => write!(f, "Middle with {:?}", point)?,
-            MouseAction::Left(point) => write!(f, "Left with {:?}", point)?,
-            MouseAction::Right(point) => write!(f, "Right with {:?}", point)?,
-            MouseAction::Double(point) => write!(f, "Double with {:?}", point)?,
-            MouseAction::Move(point) => write!(f, "Move with {:?}", point)?,
-            MouseAction::Drag(from, to) => write!(f, "Drag from {:?} to: {:?}", from, to)?,
-        }
-        Ok(())
-    }
-}
-
-pub trait Component {
-    fn get_id(&self) -> Uuid;
-    fn get_size(&self) -> Dimension;
-    fn get_updates(&mut self) -> Result<Vec<UpdateElement>>;
-    fn handle_click(&mut self, click: MouseAction) -> Result<Vec<ClickAction>>;
-}
-
-impl Debug for dyn Component {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
+use crate::screen::dimension::Dimension;
+use crate::screen::point::Point;
+use crate::screen::window::border_elements::BorderElements;
+use crate::screen::window::border_style::BorderStyle;
+use crate::screen::window::component::Component;
+use crate::screen::window::has_close_action::HasCloseAndRefreshActions;
+use crate::screen::window::mouse_action::MouseAction;
+use crate::screen::window::update_element::UpdateElement;
 
 #[derive(Debug)]
-pub struct Window {
+pub struct Window<T: HasCloseAndRefreshActions + PartialEq + Clone> {
     pub id: Uuid,
     pub z: i32,
     pub location: Point,
     border_style: BorderStyle,
     border_title: Box<str>,
-    component: Box<dyn Component>,
+    component: Box<dyn Component<T>>,
     pub refresh: bool,
     pub can_move: bool,
     close_point: Option<Point>,
 }
 
-impl Window {
+impl<T: HasCloseAndRefreshActions + PartialEq + Clone> Window<T> {
     pub fn new(
         location: Point,
         z: i32,
-        component: Box<dyn Component>,
+        component: Box<dyn Component<T>>,
         border_style: BorderStyle,
         border_title: Box<str>,
         can_move: bool,
@@ -118,7 +44,7 @@ impl Window {
     ) -> Self {
         let id = component.get_id();
         let width =
-            Window::get_window_size(component.get_size(), border_style).width;
+            Window::<T>::get_window_size(component.get_size(), border_style).width;
 
         let close_point = match can_close {
             true => Some((width - 4, 0).into()),
@@ -225,24 +151,13 @@ impl Window {
         }
         Ok(updates)
     }
-}
-
-impl Component for Window {
-    fn get_id(&self) -> Uuid {
-        self.component.get_id()
-    }
-
-    fn get_size(&self) -> Dimension {
-        Window::get_window_size(self.component.get_size().clone(), self.border_style)
-    }
-
-    fn get_updates(&mut self) -> Result<Vec<UpdateElement>> {
+    fn get_updates_or_state(&mut self, updates_getter: fn (&mut Box<dyn Component<T>>) -> Result<Vec<UpdateElement>>) -> Result<Vec<UpdateElement>> {
         let mut updates = match self.border_style != BorderStyle::None {
             true => self.draw_border()?,
             false => vec![],
         };
 
-        for update in self.component.get_updates()?.iter() {
+        for update in updates_getter(&mut self.component)?.iter() {
             let point = match self.border_style != BorderStyle::None {
                 true => Point{x: update.point.x + 2, y: update.point.y + 1 },
                 false => update.point,
@@ -254,8 +169,26 @@ impl Component for Window {
 
         return Ok(updates);
     }
+}
 
-    fn handle_click(&mut self, mouse_action: MouseAction) -> Result<Vec<ClickAction>> {
+impl<T: HasCloseAndRefreshActions + PartialEq + Clone> Component<T> for Window<T> {
+    fn get_id(&self) -> Uuid {
+        self.component.get_id()
+    }
+
+    fn get_size(&self) -> Dimension {
+        Window::<T>::get_window_size(self.component.get_size().clone(), self.border_style)
+    }
+
+    fn get_state(&mut self) -> Result<Vec<UpdateElement>> {
+        self.get_updates_or_state(|c| c.get_state())
+    }
+
+    fn get_updates(&mut self) -> Result<Vec<UpdateElement>> {
+        self.get_updates_or_state(|c| c.get_updates())
+    }
+
+    fn handle_click(&mut self, mouse_action: MouseAction) -> Result<Vec<T>> {
         let size = self.get_size();
         let action_point = mouse_action.to_point();
         if self.border_style != BorderStyle::None &&
@@ -265,7 +198,7 @@ impl Component for Window {
                 MouseAction::Left(_) => {
                     if let Some(close_point) = self.close_point {
                         if action_point == close_point || action_point == close_point + (1,0).into() {
-                            return Ok(vec![Close(self.get_id())])
+                            return Ok(vec![T::get_close_action(self.get_id())])
                         }
                     }
                 }
@@ -302,7 +235,7 @@ impl Component for Window {
                 MouseAction::Move(_) => self.component.handle_click(MouseAction::Move(rel_point))?,
                 MouseAction::Drag(_, vector) => self.component.handle_click(MouseAction::Drag(rel_point, vector))?,
             };
-            if click_actions.contains(&Refresh) {
+            if click_actions.contains(&T::get_refresh_action()) {
                 self.refresh = true;
             }
             return Ok(click_actions);
@@ -311,7 +244,7 @@ impl Component for Window {
     }
 }
 
-fn calculate_relative_x_y(window: &Window, point: Point) -> Point{
+fn calculate_relative_x_y<T: HasCloseAndRefreshActions + PartialEq + Clone>(window: &Window<T>, point: Point) -> Point{
     match window.border_style != BorderStyle::None {
         true => {
             (point.x - 2, point.y - 1).into()
@@ -320,13 +253,13 @@ fn calculate_relative_x_y(window: &Window, point: Point) -> Point{
     }
 }
 
-impl PartialEq for Window {
+impl<T: HasCloseAndRefreshActions + PartialEq + Clone> PartialEq for Window<T> {
     fn eq(&self, other: &Self) -> bool {
         return other.id == self.id;
     }
 }
 
-impl PartialOrd for Window {
+impl<T: HasCloseAndRefreshActions + PartialEq + Clone> PartialOrd for Window<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         if self.z < other.z {
             return Some(Ordering::Less);

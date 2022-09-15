@@ -7,6 +7,7 @@ edition = "2021"
 minesweeper_engine = {path = "../minesweeper/engine", version = "1.0.0"}
 minesweeper_tui_game_view = {path = "../minesweeper/tui_game_view", version = "1.0.0"}
 tui = {path = "../tui", version = "1.0.0"}
+game_actions = {path = "../game_actions", version = "1.0.0"}
 bitflags = "1.3"
 cassowary = "0.3"
 unicode-segmentation = "1.2"
