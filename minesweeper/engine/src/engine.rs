@@ -19,7 +19,8 @@ pub struct Engine {
     flagged_cells: i32,
     total_cells: i32,
     start_instant: Option<Instant>,
-    game_complete_time: u64
+    game_complete_time: u64,
+    changed_cells: HashSet<Cell>
 }
 
 impl Engine {
@@ -27,10 +28,13 @@ impl Engine {
         let total_cells = width * height;
         let mut board_play_state = HashMap::new();
         let mut board_state = HashMap::new();
+        let mut changed_cells = HashSet::new();
         for x in 0..width {
             for y in 0..height {
-                board_play_state.insert(Cell{x,y}, Unchecked);
-                board_state.insert(Cell{x,y}, Checked(Zero));
+                let cell = Cell{x,y};
+                board_play_state.insert(cell, Unchecked);
+                board_state.insert(cell, Checked(Zero));
+                changed_cells.insert(cell);
             }
         }
         Engine {
@@ -46,6 +50,7 @@ impl Engine {
             board_initialised: false,
             start_instant: None,
             game_complete_time: 0,
+            changed_cells
         }
     }
 
@@ -73,11 +78,11 @@ impl Engine {
                     if let Some(p_cell_state) = self.board_play_state.get(&cell) {
                         if *cell_state == Bomb {
                             if *p_cell_state != Flagged && *p_cell_state != Exploded {
-                                self.board_play_state.insert(cell, Bomb);
+                                self.update_play_board_state(cell, Bomb);
                             }
                         } else {
                             if *p_cell_state == Flagged {
-                                self.board_play_state.insert(cell, Cross);
+                                self.update_play_board_state(cell, Cross);
                             }
                         }
                     }
@@ -157,7 +162,7 @@ impl Engine {
                     }
                 }
                 if self.board_play_state[&cell] == Unchecked {
-                    self.board_play_state.insert(cell, self.board_state[&cell]);
+                    self.update_play_board_state(cell, self.board_state[&cell]);
                     self.checked_cells += 1;
                 }
             }
@@ -209,7 +214,7 @@ impl Engine {
     fn flag_cell(&mut self, cell: Cell) -> GameState {
         match self.board_play_state[&cell] {
             Unchecked => {
-                self.board_play_state.insert(cell,Flagged);
+                self.update_play_board_state(cell, Flagged);
                 self.flagged_cells += 1;
                 if self.is_game_won() {
                     self.win_game();
@@ -219,7 +224,7 @@ impl Engine {
                 }
             }
             Flagged => {
-                self.board_play_state.insert(cell,Unchecked);
+                self.update_play_board_state(cell, Unchecked);
                 self.flagged_cells -= 1;
             }
             _ => {}
@@ -230,10 +235,10 @@ impl Engine {
     fn dig_cell(&mut self, cell: Cell, also_unflag: bool) -> GameState {
         match self.board_play_state[&cell] {
             Unchecked => {
-                self.board_play_state.insert(cell, self.board_state[&cell]);
+                self.update_play_board_state(cell, self.board_state[&cell]);
                 match self.board_play_state[&cell] {
                     Bomb => {
-                        self.board_play_state.insert(cell, Exploded);
+                        self.update_play_board_state(cell, Exploded);
                         self.lose_game();
                         return Complete(Lose);
                     },
@@ -254,13 +259,19 @@ impl Engine {
             }
             Flagged => {
                 if also_unflag {
-                    self.board_play_state.insert(cell, Unchecked);
+                    self.update_play_board_state(cell, Unchecked);
                     self.flagged_cells -= 1;
                 }
             }
             _ => {}
         }
         return Playing;
+    }
+
+    fn update_play_board_state(&mut self, cell: Cell, new_state: CellState)
+    {
+        self.board_play_state.insert(cell, new_state);
+        self.changed_cells.insert(cell);
     }
 }
 
@@ -269,7 +280,7 @@ impl CanBeEngine for Engine {
         (self.width, self.height)
     }
 
-    fn get_board_state(&self) -> (GameStats, HashMap<Cell,CellState>) {
+    fn get_game_stats(&self) -> GameStats {
         let game_time = match self.game_state {
             Complete(_) => self.game_complete_time,
             _ => match self.start_instant{
@@ -277,7 +288,20 @@ impl CanBeEngine for Engine {
                 Some(instant) => instant.elapsed().as_secs()
             }
         };
-        (GameStats {game_state: self.game_state, flags_remaining: self.bomb_count - self.flagged_cells, game_run_time: game_time}, self.board_play_state.clone())
+        GameStats {game_state: self.game_state, flags_remaining: self.bomb_count - self.flagged_cells, game_run_time: game_time}
+    }
+
+    fn get_board_updates(&mut self) -> HashMap<Cell,CellState> {
+        let mut cell_updates = HashMap::new();
+        for cell in self.changed_cells.iter() {
+            cell_updates.insert(cell.clone(), self.board_play_state[cell]);
+        }
+        self.changed_cells.clear();
+        return cell_updates;
+    }
+
+    fn get_board_state(&mut self) -> HashMap<Cell,CellState> {
+        return self.board_play_state.clone();
     }
 
     fn play_move(&mut self, move_type: MoveType, cell: Cell) -> crossterm::Result<GameState> {

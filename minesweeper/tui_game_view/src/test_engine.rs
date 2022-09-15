@@ -25,7 +25,15 @@ impl CanBeEngine for TestEngine {
         return (4,3);
     }
 
-    fn get_board_state(&self) -> (GameStats, HashMap<Cell, CellState>) {
+    fn get_game_stats(&self) -> GameStats {
+        return GameStats{game_state: Playing, flags_remaining:33, game_run_time: 999};
+    }
+
+    fn get_board_updates(&mut self) -> HashMap<Cell, CellState> {
+        self.get_board_state()
+    }
+
+    fn get_board_state(&mut self) -> HashMap<Cell, CellState> {
         let mut map = HashMap::new();
         if !self.updated {
             map.insert(Cell{y: 0, x: 0}, Checked(Zero));
@@ -41,7 +49,7 @@ impl CanBeEngine for TestEngine {
             map.insert(Cell{y: 3, x: 1}, Flagged);
             map.insert(Cell{y: 3, x: 2}, Bomb);
         }
-        return (GameStats{game_state: Playing, flags_remaining:33, game_run_time: 999}, map);
+        return map;
     }
 
     fn play_move(&mut self, _: MoveType, _: Cell) -> crossterm::Result<GameState> {

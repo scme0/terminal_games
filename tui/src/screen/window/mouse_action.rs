@@ -1,5 +1,5 @@
 use std::fmt::{Display, Formatter};
-use crate::screen::Point;
+use crate::screen::point::Point;
 
 #[derive(Debug, Copy, Clone)]
 pub enum MouseAction {

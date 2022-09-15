@@ -6,7 +6,8 @@ use log::info;
 use game_actions::click_action::ClickAction;
 use game_actions::game_type::GameType;
 use minesweeper_tui_game_view::game_view::GameView;
-use tui::screen::{Point, Screen};
+use tui::screen::point::Point;
+use tui::screen::Screen;
 use tui::screen::window::border_style::BorderStyle;
 use tui::screen::window::Window;
 use tui::screen::window::button::ButtonComponent;
@@ -44,7 +45,7 @@ impl State {
         state.screen.add(Window::new(
             (10, 5).into(),
             99,
-            Box::from(ButtonComponent::new(Box::from("Easy"), (6, 1).into(), ClickAction::Minesweeper(GameType::Easy))),
+            Box::from(ButtonComponent::new(Box::from("Easy"), (6, 1).into(), ClickAction::Minesweeper(GameType::Small))),
             BorderStyle::Single,
             Box::default(),
             false,
@@ -62,7 +63,7 @@ impl State {
         state.screen.add(Window::new(
             (30, 5).into(),
             97,
-            Box::from(ButtonComponent::new(Box::from("Hard"), (6, 1).into(), ClickAction::Minesweeper(GameType::Hard))),
+            Box::from(ButtonComponent::new(Box::from("Hard"), (6, 1).into(), ClickAction::Minesweeper(GameType::Large))),
             BorderStyle::Single,
             Box::default(),
             false,

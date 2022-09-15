@@ -10,7 +10,8 @@ use crossterm::Result;
 use std::cmp::Ordering;
 use std::fmt::Debug;
 use uuid::Uuid;
-use crate::screen::{Dimension, Point};
+use crate::screen::dimension::Dimension;
+use crate::screen::point::Point;
 use crate::screen::window::border_elements::BorderElements;
 use crate::screen::window::border_style::BorderStyle;
 use crate::screen::window::component::Component;
@@ -150,6 +151,24 @@ impl<T: HasCloseAndRefreshActions + PartialEq + Clone> Window<T> {
         }
         Ok(updates)
     }
+    fn get_updates_or_state(&mut self, updates_getter: fn (&mut Box<dyn Component<T>>) -> Result<Vec<UpdateElement>>) -> Result<Vec<UpdateElement>> {
+        let mut updates = match self.border_style != BorderStyle::None {
+            true => self.draw_border()?,
+            false => vec![],
+        };
+
+        for update in updates_getter(&mut self.component)?.iter() {
+            let point = match self.border_style != BorderStyle::None {
+                true => Point{x: update.point.x + 2, y: update.point.y + 1 },
+                false => update.point,
+            };
+            updates.push(UpdateElement {point, value: update.value, fg: update.fg });
+        }
+
+        self.refresh = false;
+
+        return Ok(updates);
+    }
 }
 
 impl<T: HasCloseAndRefreshActions + PartialEq + Clone> Component<T> for Window<T> {
@@ -161,23 +180,12 @@ impl<T: HasCloseAndRefreshActions + PartialEq + Clone> Component<T> for Window<T
         Window::<T>::get_window_size(self.component.get_size().clone(), self.border_style)
     }
 
+    fn get_state(&mut self) -> Result<Vec<UpdateElement>> {
+        self.get_updates_or_state(|c| c.get_state())
+    }
+
     fn get_updates(&mut self) -> Result<Vec<UpdateElement>> {
-        let mut updates = match self.border_style != BorderStyle::None {
-            true => self.draw_border()?,
-            false => vec![],
-        };
-
-        for update in self.component.get_updates()?.iter() {
-            let point = match self.border_style != BorderStyle::None {
-                true => Point{x: update.point.x + 2, y: update.point.y + 1 },
-                false => update.point,
-            };
-            updates.push(UpdateElement {point, value: update.value, fg: update.fg });
-        }
-
-        self.refresh = false;
-
-        return Ok(updates);
+        self.get_updates_or_state(|c| c.get_updates())
     }
 
     fn handle_click(&mut self, mouse_action: MouseAction) -> Result<Vec<T>> {

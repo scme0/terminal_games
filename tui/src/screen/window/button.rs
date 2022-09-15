@@ -1,6 +1,6 @@
 use crossterm::Result;
 use uuid::Uuid;
-use crate::screen::{Dimension};
+use crate::screen::dimension::Dimension;
 use crate::screen::window::component::Component;
 use crate::screen::window::has_close_action::HasCloseAndRefreshActions;
 use crate::screen::window::mouse_action::MouseAction;
@@ -36,7 +36,7 @@ impl<T: HasCloseAndRefreshActions + PartialEq + Clone> Component<T> for ButtonCo
         return self.size;
     }
 
-    fn get_updates(&mut self) -> Result<Vec<UpdateElement>> {
+    fn get_state(&mut self) -> Result<Vec<UpdateElement>> {
         let mut updates = vec![];
         if self.changed {
             let mut y = 0;
@@ -61,6 +61,10 @@ impl<T: HasCloseAndRefreshActions + PartialEq + Clone> Component<T> for ButtonCo
             }
         }
         return Ok(updates);
+    }
+
+    fn get_updates(&mut self) -> Result<Vec<UpdateElement>> {
+        self.get_state()
     }
 
     fn handle_click(&mut self, click: MouseAction) -> Result<Vec<T>> {
