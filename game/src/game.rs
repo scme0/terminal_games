@@ -84,7 +84,7 @@ impl State {
                         0,
                         Box::from(GameView::new(game_type)),
                         BorderStyle::Double,
-                        Box::from(format!("{:?}", game_type)),
+                        Box::from(game_type_to_minesweeper_string(game_type)),
                         true,
                         true
                     ))?;
@@ -210,4 +210,12 @@ pub fn start() -> Result<()> {
     terminal::disable_raw_mode()?;
 
     return result;
+}
+
+fn game_type_to_minesweeper_string(game_type: GameType) -> String {
+    return match game_type {
+        GameType::Small => "Easy",
+        GameType::Medium => "Medium",
+        GameType::Large => "Hard"
+    }.to_string();
 }
